@@ -1,0 +1,422 @@
+/* =========================================================
+   Blind Test — Shared CSS
+   ========================================================= */
+
+:root {
+  --neon-pink: oklch(0.72 0.27 350);
+  --neon-cyan: oklch(0.85 0.18 200);
+  --neon-violet: oklch(0.65 0.27 300);
+  --stage-deep: oklch(0.12 0.08 285);
+  --foreground: oklch(0.98 0.01 320);
+  --foreground-muted: oklch(0.98 0.01 320 / 0.5);
+  --input-bg: oklch(0.3 0.06 285 / 0.6);
+  --shadow-neon-pink: 0 0 12px oklch(0.72 0.27 350 / 0.9),
+    0 0 28px oklch(0.72 0.27 350 / 0.55),
+    0 0 60px oklch(0.72 0.27 350 / 0.35);
+  --shadow-neon-cyan: 0 0 10px oklch(0.85 0.18 200 / 0.85),
+    0 0 24px oklch(0.85 0.18 200 / 0.5);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: var(--stage-deep);
+  color: var(--foreground);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* =========================================================
+   Stage / background
+   ========================================================= */
+.stage {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 40%, oklch(0.35 0.22 320 / 0.55), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, oklch(0.4 0.2 240 / 0.45), transparent 70%),
+    linear-gradient(180deg, oklch(0.1 0.06 280), oklch(0.06 0.05 270));
+}
+
+/* =========================================================
+   Smoke
+   ========================================================= */
+.smoke-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.smoke {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(44px);
+  opacity: 0.55;
+}
+.smoke-1 {
+  left: -80px; top: 40px;
+  width: 288px; height: 288px;
+  background: radial-gradient(circle, oklch(0.55 0.22 320 / 0.55), transparent 70%);
+  animation: smoke-drift-1 14s ease-in-out infinite;
+}
+.smoke-2 {
+  right: -64px; top: 130px;
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, oklch(0.55 0.2 240 / 0.55), transparent 70%);
+  animation: smoke-drift-2 18s ease-in-out infinite;
+}
+.smoke-3 {
+  bottom: -40px; left: 25%;
+  width: 288px; height: 288px;
+  background: radial-gradient(circle, oklch(0.6 0.22 290 / 0.5), transparent 70%);
+  animation: smoke-drift-3 22s ease-in-out infinite;
+}
+@keyframes smoke-drift-1 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%       { transform: translate3d(40px, -30px, 0) scale(1.15); }
+}
+@keyframes smoke-drift-2 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.1); }
+  50%       { transform: translate3d(-50px, 20px, 0) scale(0.95); }
+}
+@keyframes smoke-drift-3 {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(0.9); }
+  50%       { transform: translate3d(30px, 40px, 0) scale(1.2); }
+}
+
+/* =========================================================
+   Floating notes
+   ========================================================= */
+.notes-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.note {
+  position: absolute;
+  bottom: 8%;
+  animation: float-note 6s ease-in-out infinite;
+  user-select: none;
+}
+.note-pink {
+  color: oklch(0.85 0.22 340);
+  filter: drop-shadow(0 0 6px var(--neon-pink)) drop-shadow(0 0 14px var(--neon-pink));
+}
+.note-cyan {
+  color: oklch(0.9 0.18 200);
+  filter: drop-shadow(0 0 6px var(--neon-cyan)) drop-shadow(0 0 14px var(--neon-cyan));
+}
+@keyframes float-note {
+  0%   { transform: translateY(0) rotate(-6deg); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateY(-120px) rotate(8deg); opacity: 0; }
+}
+
+/* =========================================================
+   Content
+   ========================================================= */
+.content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 28rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.note-side { font-size: 28px; }
+.neon-cyan {
+  color: oklch(0.9 0.18 200);
+  filter: drop-shadow(0 0 6px var(--neon-cyan)) drop-shadow(0 0 14px var(--neon-cyan));
+}
+.neon-title {
+  margin: 0;
+  font-family: "Pacifico", "Brush Script MT", cursive;
+  font-size: clamp(36px, 10vw, 80px);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: oklch(0.98 0.02 340);
+  text-shadow:
+    0 0 4px oklch(1 0 0 / 0.9),
+    0 0 10px var(--neon-pink),
+    0 0 22px var(--neon-pink),
+    0 0 44px var(--neon-pink),
+    0 0 80px oklch(0.65 0.27 340 / 0.7);
+  animation: neon-flicker 4.5s infinite;
+}
+@keyframes neon-flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+    opacity: 1;
+    text-shadow:
+      0 0 4px oklch(1 0 0 / 0.9),
+      0 0 10px var(--neon-pink),
+      0 0 22px var(--neon-pink),
+      0 0 44px var(--neon-pink),
+      0 0 80px oklch(0.65 0.27 340 / 0.7);
+  }
+  20%, 24%, 55% {
+    opacity: 0.85;
+    text-shadow: 0 0 4px oklch(1 0 0 / 0.6), 0 0 10px var(--neon-pink);
+  }
+}
+
+/* Tags */
+.tags {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.tag {
+  border: 1px solid oklch(0.72 0.27 350 / 0.4);
+  background: oklch(0.72 0.27 350 / 0.1);
+  color: var(--neon-pink);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 0 10px oklch(0.72 0.27 350 / 0.3);
+}
+
+/* =========================================================
+   Robot
+   ========================================================= */
+.robot-stage {
+  margin-top: 24px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 256px;
+}
+@media (min-width: 640px) { .robot-stage { height: 288px; } }
+
+.robot-halo {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 224px; height: 224px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: radial-gradient(circle, oklch(0.7 0.25 330 / 0.55), oklch(0.5 0.22 240 / 0.35) 45%, transparent 70%);
+  filter: blur(20px);
+}
+.floor-shadow {
+  position: absolute;
+  bottom: 8px;
+  width: 192px; height: 12px;
+  border-radius: 9999px;
+  background: radial-gradient(ellipse, oklch(0.85 0.2 340 / 0.55), transparent 70%);
+  filter: blur(8px);
+}
+.robot-wrap {
+  position: relative;
+  height: 100%;
+  filter: drop-shadow(0 0 14px oklch(0.7 0.22 320 / 0.55)) drop-shadow(0 0 30px oklch(0.6 0.22 260 / 0.35));
+}
+.robot-img {
+  position: relative;
+  display: block;
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+  filter: saturate(0.9) contrast(1.05) brightness(0.92);
+}
+.robot-light {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-mask-image: var(--robot-img);
+  mask-image: var(--robot-img);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+.robot-light-rim {
+  background:
+    radial-gradient(ellipse 70% 90% at 15% 40%, oklch(0.75 0.27 350 / 0.7), transparent 60%),
+    radial-gradient(ellipse 70% 90% at 85% 55%, oklch(0.85 0.2 215 / 0.6), transparent 60%);
+  mix-blend-mode: overlay;
+}
+.robot-light-top {
+  background: linear-gradient(180deg, oklch(0.9 0.18 215 / 0.4), transparent 40%);
+  mix-blend-mode: screen;
+}
+.robot-dance {
+  animation: robot-bob 1.1s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+@keyframes robot-bob {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  25%       { transform: translateY(-6px) rotate(2deg); }
+  50%       { transform: translateY(0) rotate(-1deg); }
+  75%       { transform: translateY(-4px) rotate(3deg); }
+}
+
+/* =========================================================
+   Description
+   ========================================================= */
+.description {
+  margin: 16px 0 0;
+  max-width: 24rem;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.55;
+  color: oklch(0.98 0.01 320 / 0.85);
+}
+@media (min-width: 640px) { .description { font-size: 16px; } }
+.accent-cyan { color: var(--neon-cyan); font-weight: 600; }
+
+/* =========================================================
+   Buttons
+   ========================================================= */
+.ctas {
+  margin-top: 28px;
+  width: 100%;
+  max-width: 24rem;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.btn {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 12px;
+  padding: 0 16px;
+  height: 48px;
+  font-size: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-small {
+  height: 40px;
+  font-size: 14px;
+  padding: 0 16px;
+  border-radius: 10px;
+}
+.btn-pink {
+  background: linear-gradient(135deg, oklch(0.78 0.27 350), oklch(0.62 0.27 340));
+  color: oklch(0.99 0.01 340);
+  box-shadow: var(--shadow-neon-pink);
+}
+.btn-pink:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 18px var(--neon-pink), 0 0 40px var(--neon-pink), 0 0 90px oklch(0.72 0.27 350 / 0.6);
+}
+.btn-pink:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-cyan {
+  background: transparent;
+  color: var(--neon-cyan);
+  border: 1.5px solid var(--neon-cyan);
+  box-shadow: var(--shadow-neon-cyan), inset 0 0 10px oklch(0.85 0.18 200 / 0.15);
+}
+.btn-cyan:hover {
+  transform: translateY(-2px);
+  background: oklch(0.85 0.18 200 / 0.08);
+  box-shadow: 0 0 14px var(--neon-cyan), 0 0 32px var(--neon-cyan);
+}
+
+/* =========================================================
+   AI panel
+   ========================================================= */
+.ai-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  overflow: hidden;
+  transition: grid-template-rows 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
+  margin-top: 0;
+}
+.ai-panel.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-top: 4px;
+}
+.ai-panel-inner { min-height: 0; }
+.ai-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: oklch(0.85 0.18 200 / 0.8);
+}
+.ai-row { display: flex; gap: 8px; }
+.ai-input {
+  flex: 1;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid oklch(0.85 0.18 200 / 0.4);
+  background: var(--input-bg);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  box-shadow: inset 0 0 8px oklch(0.85 0.18 200 / 0.15);
+}
+.ai-input::placeholder { color: oklch(0.98 0.01 320 / 0.35); }
+.ai-input:focus { border-color: var(--neon-cyan); }
+.ai-hint { margin: 6px 0 0; font-size: 11px; color: var(--foreground-muted); }
+
+/* Standalone AI Music Quiz additions */
+.dj-orb {
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 76px;
+  background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.18), rgba(255,0,170,.18) 38%, rgba(0,240,255,.14) 72%, rgba(0,0,0,.12));
+  box-shadow: 0 0 48px rgba(255,0,170,.45), 0 0 70px rgba(0,240,255,.25);
+  animation: floatDj 3.2s ease-in-out infinite;
+}
+.dj-orb-small { width: 128px; height: 128px; font-size: 56px; }
+.host-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgba(0,240,255,.35);
+  border-radius: 999px;
+  color: #aaf7ff;
+  background: rgba(0,240,255,.08);
+  font-size: 13px;
+  font-weight: 700;
+}
+body.beat-active .dj-orb,
+body.host-speaking .dj-orb { animation-duration: 1.1s; }
+body.answer-correct .game-shell { filter: drop-shadow(0 0 28px rgba(0,255,180,.42)); }
+body.answer-wrong .game-shell { filter: drop-shadow(0 0 28px rgba(255,60,130,.42)); }
+@keyframes floatDj {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-10px) scale(1.035); }
+}

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Music Quiz Studio</title>
+    <meta name="description" content="Play a neon browser music quiz game. Free mode or AI-powered themes and voice." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Pacifico&display=swap" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="stage">
+      <div class="smoke-layer" aria-hidden="true">
+        <div class="smoke smoke-1"></div>
+        <div class="smoke smoke-2"></div>
+        <div class="smoke smoke-3"></div>
+      </div>
+
+      <div class="notes-layer" id="notes-layer" aria-hidden="true"></div>
+
+      <div class="content">
+        <div class="title-row">
+          <span class="note-side neon-cyan">&#9834;</span>
+          <h1 class="neon-title">Blind Test</h1>
+          <span class="note-side neon-cyan">&#9835;</span>
+        </div>
+
+        <div class="tags">
+          <span class="tag">music</span>
+          <span class="tag">quiz</span>
+          <span class="tag">voice AI</span>
+          <span class="tag">party mode</span>
+        </div>
+
+        <div class="robot-stage">
+          <div class="robot-halo"></div>
+          <div class="floor-shadow"></div>
+          <div class="dj-orb" aria-hidden="true">🎧</div>
+        </div>
+
+        <p class="description">
+          Play a music quiz game with a neon AI DJ. Pick a theme, listen to
+          <span class="accent-cyan">30-second</span> previews, and guess the
+          artist &amp; title. The faster you answer, the more points you earn.
+        </p>
+
+        <div class="ctas">
+          <button id="play-free" type="button" class="btn btn-pink">
+            &#9654;&nbsp; Play Free
+          </button>
+
+          <button id="play-ai" type="button" class="btn btn-cyan">
+            &#10024;&nbsp; Play with AI (OpenAI)
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

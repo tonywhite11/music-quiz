@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Blind Test — Multiplayer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Pacifico&display=swap" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="game.css" />
+    <style>
+      /* ── Multiplayer phase system ───────────────────────── */
+      .mp-phase { display: none; }
+      .mp-phase.active { display: flex; flex-direction: column; align-items: center; }
+
+      .mp-shell {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 24px 16px 48px;
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 520px;
+        margin: 0 auto;
+      }
+
+      /* ── Join phase ─────────────────────────────────────── */
+      .mp-logo { text-align: center; margin-bottom: 24px; }
+      .mp-logo h1 { font-family: 'Pacifico', cursive; font-size: clamp(28px, 6vw, 44px); margin: 0; }
+      .mp-logo .sub { font-size: 13px; color: var(--neon-violet); letter-spacing: 0.12em; text-transform: uppercase; }
+
+      .mp-card {
+        width: 100%;
+        background: oklch(0.18 0.07 285 / 0.85);
+        border: 1px solid oklch(0.65 0.27 300 / 0.4);
+        border-radius: 20px;
+        padding: 28px 24px;
+        backdrop-filter: blur(12px);
+        margin-bottom: 16px;
+      }
+      .mp-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--foreground-muted);
+        margin-bottom: 8px;
+      }
+      .mp-input {
+        width: 100%;
+        padding: 12px 16px;
+        background: var(--input-bg);
+        border: 1.5px solid oklch(0.55 0.15 285 / 0.5);
+        border-radius: 12px;
+        color: var(--foreground);
+        font-size: 16px;
+        font-family: inherit;
+        outline: none;
+        box-sizing: border-box;
+        transition: border-color 0.2s;
+      }
+      .mp-input:focus { border-color: var(--neon-violet); }
+      .mp-input.code-input {
+        text-transform: uppercase;
+        letter-spacing: 0.25em;
+        font-size: 22px;
+        font-weight: 700;
+        text-align: center;
+      }
+      .mp-divider {
+        text-align: center;
+        color: var(--foreground-muted);
+        font-size: 13px;
+        margin: 14px 0;
+        position: relative;
+      }
+      .mp-divider::before, .mp-divider::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        width: 40%;
+        height: 1px;
+        background: oklch(0.55 0.1 285 / 0.4);
+      }
+      .mp-divider::before { left: 0; }
+      .mp-divider::after  { right: 0; }
+      .mp-error {
+        background: oklch(0.3 0.12 25 / 0.6);
+        border: 1px solid oklch(0.55 0.2 25 / 0.7);
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 14px;
+        color: oklch(0.85 0.15 25);
+        margin-top: 12px;
+        display: none;
+      }
+      .mp-back { font-size: 13px; color: var(--foreground-muted); text-decoration: none; margin-top: 8px; }
+      .mp-back:hover { color: var(--foreground); }
+
+      /* ── Lobby phase ────────────────────────────────────── */
+      .room-code-banner {
+        text-align: center;
+        margin-bottom: 20px;
+        width: 100%;
+      }
+      .room-code-label { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--foreground-muted); }
+      .room-code-value {
+        font-size: clamp(40px, 10vw, 64px);
+        font-family: 'Pacifico', cursive;
+        color: var(--neon-violet);
+        letter-spacing: 0.15em;
+        text-shadow: 0 0 18px oklch(0.65 0.27 300 / 0.8);
+        line-height: 1;
+        margin: 4px 0 10px;
+      }
+      .copy-link-btn {
+        background: oklch(0.65 0.27 300 / 0.15);
+        border: 1px solid oklch(0.65 0.27 300 / 0.5);
+        border-radius: 8px;
+        color: var(--neon-violet);
+        font-size: 13px;
+        font-family: inherit;
+        padding: 6px 14px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .copy-link-btn:hover { background: oklch(0.65 0.27 300 / 0.25); }
+
+      .players-section { width: 100%; margin-bottom: 20px; }
+      .players-title { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--foreground-muted); margin-bottom: 10px; }
+      .players-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+      .player-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: oklch(0.22 0.07 285 / 0.6);
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-size: 15px;
+      }
+      .player-avatar { font-size: 20px; }
+      .player-name { flex: 1; font-weight: 500; }
+      .host-badge-sm {
+        font-size: 11px;
+        background: oklch(0.65 0.27 300 / 0.25);
+        border: 1px solid oklch(0.65 0.27 300 / 0.5);
+        color: var(--neon-violet);
+        border-radius: 6px;
+        padding: 2px 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      /* ── Theme grid (lobby) ─────────────────────────────── */
+      .host-controls { width: 100%; }
+      .host-controls-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+      .multi-theme-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+      @media (max-width: 400px) { .multi-theme-grid { grid-template-columns: repeat(2, 1fr); } }
+      .multi-theme-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 10px 6px;
+        background: oklch(0.22 0.07 285 / 0.6);
+        border: 1.5px solid transparent;
+        border-radius: 14px;
+        cursor: pointer;
+        font-family: inherit;
+        color: var(--foreground);
+        transition: all 0.18s;
+        font-size: 13px;
+      }
+      .multi-theme-btn .te { font-size: 22px; line-height: 1; }
+      .multi-theme-btn:hover { background: oklch(0.28 0.1 285 / 0.8); border-color: oklch(0.65 0.27 300 / 0.5); }
+      .multi-theme-btn.selected {
+        border-color: var(--neon-violet);
+        background: oklch(0.65 0.27 300 / 0.15);
+        box-shadow: 0 0 12px oklch(0.65 0.27 300 / 0.4);
+      }
+
+      .waiting-msg { text-align: center; color: var(--foreground-muted); font-size: 15px; padding: 20px 0; }
+
+      /* ── Playing phase ───────────────────────────────────── */
+      .mp-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 16px;
+      }
+      .mp-round-label { font-size: 14px; color: var(--foreground-muted); }
+      .mp-theme-tag {
+        font-size: 12px;
+        background: oklch(0.65 0.27 300 / 0.2);
+        border: 1px solid oklch(0.65 0.27 300 / 0.4);
+        border-radius: 20px;
+        padding: 3px 10px;
+        color: var(--neon-violet);
+      }
+
+      .mp-timer-wrap {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 20px;
+      }
+      .mp-timer-svg { width: 120px; height: 120px; transform: rotate(-90deg); }
+      .mp-timer-track { fill: none; stroke: oklch(0.3 0.07 285); stroke-width: 5; }
+      .mp-timer-ring {
+        fill: none;
+        stroke: var(--neon-violet);
+        stroke-width: 5;
+        stroke-linecap: round;
+        stroke-dasharray: 301.6;
+        stroke-dashoffset: 0;
+        transition: stroke 0.5s;
+        filter: drop-shadow(0 0 6px oklch(0.65 0.27 300 / 0.9));
+      }
+      .mp-timer-ring.urgent { stroke: var(--neon-pink); }
+      .mp-timer-num {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--neon-violet);
+      }
+      .mp-timer-num.urgent { color: var(--neon-pink); }
+
+      .mp-answer-area { width: 100%; margin-bottom: 16px; }
+      .mp-input-group { margin-bottom: 12px; }
+
+      .answered-banner {
+        text-align: center;
+        padding: 12px;
+        background: oklch(0.28 0.15 160 / 0.35);
+        border: 1px solid oklch(0.6 0.2 160 / 0.5);
+        border-radius: 12px;
+        color: oklch(0.8 0.18 160);
+        font-size: 15px;
+        margin-bottom: 16px;
+      }
+
+      .live-scores { width: 100%; }
+      .live-scores-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--foreground-muted); margin-bottom: 8px; }
+      .live-score-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        background: oklch(0.2 0.06 285 / 0.5);
+        border-radius: 10px;
+        margin-bottom: 6px;
+        font-size: 14px;
+        transition: background 0.2s;
+      }
+      .live-score-row.answered { background: oklch(0.25 0.1 160 / 0.35); }
+      .ls-avatar { font-size: 16px; }
+      .ls-name { flex: 1; }
+      .ls-score { font-weight: 600; color: var(--neon-cyan); }
+      .ls-check { font-size: 16px; }
+
+      /* ── Reveal phase ────────────────────────────────────── */
+      .reveal-cover-wrap { position: relative; margin-bottom: 16px; }
+      .mp-cover {
+        width: 140px;
+        height: 140px;
+        border-radius: 16px;
+        object-fit: cover;
+        background: oklch(0.22 0.07 285);
+        display: block;
+        margin: 0 auto;
+        box-shadow: 0 0 30px oklch(0.65 0.27 300 / 0.5);
+      }
+      .mp-cover-placeholder {
+        width: 140px; height: 140px; border-radius: 16px;
+        background: oklch(0.22 0.07 285);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 48px; margin: 0 auto;
+        box-shadow: 0 0 30px oklch(0.65 0.27 300 / 0.5);
+      }
+      .mp-correct-artist { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+      .mp-correct-title  { font-size: 16px; color: var(--foreground-muted); text-align: center; margin-bottom: 20px; }
+
+      .round-results { width: 100%; margin-bottom: 16px; }
+      .round-result-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 14px;
+        background: oklch(0.2 0.06 285 / 0.5);
+        border-radius: 12px;
+        margin-bottom: 6px;
+        font-size: 14px;
+      }
+      .rr-name { flex: 1; font-weight: 500; }
+      .rr-checks { display: flex; gap: 4px; }
+      .rr-pts { font-weight: 700; color: var(--neon-cyan); min-width: 52px; text-align: right; }
+
+      .reveal-scores { width: 100%; margin-bottom: 20px; }
+      .reveal-scores-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--foreground-muted); margin-bottom: 8px; }
+      .reveal-score-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 14px;
+        background: oklch(0.2 0.06 285 / 0.5);
+        border-radius: 12px;
+        margin-bottom: 6px;
+        font-size: 14px;
+      }
+      .rs-rank { min-width: 24px; color: var(--foreground-muted); font-size: 13px; }
+      .rs-name { flex: 1; font-weight: 500; }
+      .rs-score { font-weight: 700; color: var(--neon-cyan); }
+
+      .auto-advance { text-align: center; font-size: 13px; color: var(--foreground-muted); margin-top: 8px; }
+
+      /* ── Gameover phase ──────────────────────────────────── */
+      .go-heading { font-family: 'Pacifico', cursive; font-size: clamp(32px, 7vw, 52px); text-align: center; margin-bottom: 8px; }
+      .podium {
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        gap: 8px;
+        margin: 16px 0 24px;
+        width: 100%;
+      }
+      .podium-place {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        flex: 1;
+        max-width: 130px;
+      }
+      .podium-avatar { font-size: 28px; }
+      .podium-name { font-size: 13px; font-weight: 600; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .podium-score { font-size: 15px; font-weight: 700; color: var(--neon-cyan); }
+      .podium-bar {
+        width: 100%;
+        border-radius: 10px 10px 0 0;
+        min-height: 20px;
+      }
+      .podium-place:nth-child(1) .podium-bar { background: oklch(0.75 0.2 85); height: 90px; }
+      .podium-place:nth-child(2) .podium-bar { background: oklch(0.7 0.1 285); height: 60px; }
+      .podium-place:nth-child(3) .podium-bar { background: oklch(0.65 0.15 50); height: 40px; }
+      .podium-medal { font-size: 20px; }
+
+      .final-list { width: 100%; margin-bottom: 24px; }
+      .final-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 16px;
+        background: oklch(0.2 0.06 285 / 0.5);
+        border-radius: 12px;
+        margin-bottom: 8px;
+        font-size: 15px;
+      }
+      .fr-rank { min-width: 24px; color: var(--foreground-muted); }
+      .fr-avatar { font-size: 20px; }
+      .fr-name { flex: 1; font-weight: 500; }
+      .fr-score { font-weight: 700; color: var(--neon-cyan); }
+
+      .go-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    </style>
+  </head>
+  <body>
+    <div class="smoke-layer" aria-hidden="true">
+      <div class="smoke smoke-1"></div>
+      <div class="smoke smoke-2"></div>
+      <div class="smoke smoke-3"></div>
+    </div>
+    <div class="notes-layer" id="notes-layer" aria-hidden="true"></div>
+
+    <div class="mp-shell">
+
+      <!-- ── PHASE: Join ── -->
+      <div id="phase-join" class="mp-phase active">
+        <div class="mp-logo" style="margin-top:32px">
+          <h1 class="neon-title">Blind Test</h1>
+          <div class="sub">Multiplayer</div>
+        </div>
+
+        <div class="mp-card">
+          <label class="mp-label" for="player-name-input">Your Name</label>
+          <input id="player-name-input" class="mp-input" type="text"
+            placeholder="Enter your name" maxlength="20" autocomplete="off" />
+
+          <button id="create-room-btn" class="btn btn-multi" style="width:100%;margin-top:16px;height:48px;font-size:15px">
+            &#10133;&nbsp; Create Room
+          </button>
+
+          <div class="mp-divider">or join</div>
+
+          <label class="mp-label" for="join-code-input">Room Code</label>
+          <input id="join-code-input" class="mp-input code-input" type="text"
+            placeholder="ABCD" maxlength="4" autocomplete="off" spellcheck="false" />
+
+          <button id="join-room-btn" class="btn btn-cyan" style="width:100%;margin-top:12px;height:48px;font-size:15px">
+            &#9654;&nbsp; Join Room
+          </button>
+
+          <div id="join-error" class="mp-error"></div>
+        </div>
+
+        <a href="index.html" class="mp-back">&#8592; Back to Home</a>
+      </div>
+
+      <!-- ── PHASE: Lobby ── -->
+      <div id="phase-lobby" class="mp-phase">
+        <div class="room-code-banner" style="margin-top:24px">
+          <div class="room-code-label">Room Code</div>
+          <div class="room-code-value" id="room-code-display">----</div>
+          <button id="copy-link-btn" class="copy-link-btn">&#128279;&nbsp; Copy invite link</button>
+        </div>
+
+        <div class="players-section">
+          <div class="players-title">Players <span id="player-count">(1)</span></div>
+          <ul id="lobby-players-list" class="players-list"></ul>
+        </div>
+
+        <!-- Host controls -->
+        <div id="host-controls" class="host-controls" style="display:none;width:100%">
+          <div class="mp-card" style="padding:20px">
+            <div class="host-controls-title">Choose Theme</div>
+            <div id="multi-theme-grid" class="multi-theme-grid"></div>
+            <div id="theme-loading" style="display:none;text-align:center;padding:20px;color:var(--foreground-muted)">
+              <div class="loading-dots"><span></span><span></span><span></span></div>
+              <p style="margin-top:8px;font-size:14px" id="theme-loading-text">Fetching previews…</p>
+            </div>
+          </div>
+          <button id="start-game-btn" class="btn btn-pink" style="width:100%;height:52px;font-size:16px" disabled>
+            &#9654;&nbsp; Start Game
+          </button>
+        </div>
+
+        <!-- Guest waiting -->
+        <div id="guest-waiting" class="waiting-msg" style="display:none">
+          <div class="loading-dots"><span></span><span></span><span></span></div>
+          <p style="margin-top:12px">Waiting for host to start the game…</p>
+        </div>
+      </div>
+
+      <!-- ── PHASE: Loading ── -->
+      <div id="phase-loading" class="mp-phase">
+        <div style="text-align:center;margin-top:80px">
+          <div class="dj-orb" style="font-size:64px;margin-bottom:20px">🎧</div>
+          <p class="loading-text" style="font-size:20px;font-weight:600" id="loading-phase-text">Get ready…</p>
+          <div class="loading-dots" style="margin-top:16px"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+
+      <!-- ── PHASE: Playing ── -->
+      <div id="phase-playing" class="mp-phase">
+        <div class="mp-header">
+          <span class="mp-round-label" id="mp-round-label">Round 1 / 10</span>
+          <span class="mp-theme-tag" id="mp-theme-tag">Theme</span>
+        </div>
+
+        <div class="mp-timer-wrap">
+          <svg class="mp-timer-svg" viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="mp-timer-track" cx="50" cy="50" r="48"/>
+            <circle class="mp-timer-ring" cx="50" cy="50" r="48" id="mp-timer-ring"/>
+          </svg>
+          <div class="mp-timer-num" id="mp-timer-num">30</div>
+        </div>
+
+        <div id="mp-answered-banner" class="answered-banner" style="display:none">
+          ✅ Answer submitted! Waiting for others…
+        </div>
+
+        <div id="mp-answer-area" class="mp-answer-area">
+          <div class="mp-input-group">
+            <label class="mp-label" for="mp-artist-input">Artist</label>
+            <div class="input-wrap">
+              <input id="mp-artist-input" type="text" class="mp-input"
+                placeholder="Who?" autocomplete="off" spellcheck="false" />
+              <span id="mp-artist-check" class="check-icon" aria-hidden="true"></span>
+            </div>
+          </div>
+          <div class="mp-input-group">
+            <label class="mp-label" for="mp-title-input">Title</label>
+            <div class="input-wrap">
+              <input id="mp-title-input" type="text" class="mp-input"
+                placeholder="What song?" autocomplete="off" spellcheck="false" />
+              <span id="mp-title-check" class="check-icon" aria-hidden="true"></span>
+            </div>
+          </div>
+          <button id="mp-submit-btn" class="btn btn-pink" style="width:100%;height:48px;font-size:15px;margin-top:4px">
+            &#10003;&nbsp; Submit
+          </button>
+        </div>
+
+        <button id="mp-skip-btn" class="btn btn-ghost skip-btn" style="display:none">Skip Round</button>
+
+        <div class="live-scores" id="live-scores-wrap">
+          <div class="live-scores-title">Live Scores</div>
+          <div id="live-scores-list"></div>
+        </div>
+      </div>
+
+      <!-- ── PHASE: Reveal ── -->
+      <div id="phase-reveal" class="mp-phase">
+        <div style="text-align:center;width:100%;margin-bottom:12px">
+          <div id="mp-cover-wrap">
+            <div class="mp-cover-placeholder" id="mp-cover-placeholder">🎵</div>
+            <img id="mp-cover-img" class="mp-cover" src="" alt="Album cover" style="display:none" />
+          </div>
+          <div class="mp-correct-artist" id="mp-correct-artist">—</div>
+          <div class="mp-correct-title"  id="mp-correct-title">—</div>
+        </div>
+
+        <div class="round-results">
+          <div class="live-scores-title">Round Results</div>
+          <div id="round-results-list"></div>
+        </div>
+
+        <div class="reveal-scores">
+          <div class="reveal-scores-title">Standings</div>
+          <div id="reveal-scores-list"></div>
+        </div>
+
+        <button id="mp-next-btn" class="btn btn-cyan" style="width:100%;height:48px;font-size:15px;display:none">
+          Next Round &#8594;
+        </button>
+        <div class="auto-advance" id="auto-advance-msg" style="display:none">
+          Next round in <strong id="auto-countdown">8</strong>s…
+        </div>
+      </div>
+
+      <!-- ── PHASE: Game Over ── -->
+      <div id="phase-gameover" class="mp-phase">
+        <div class="go-heading neon-title" style="margin-top:24px">Game Over!</div>
+        <div id="go-podium" class="podium"></div>
+        <div id="go-final-list" class="final-list"></div>
+        <div class="go-actions">
+          <button id="go-play-again" class="btn btn-pink">&#9654;&nbsp; Play Again</button>
+          <a href="index.html" class="btn btn-cyan">Home</a>
+        </div>
+      </div>
+
+    </div><!-- /mp-shell -->
+
+    <!-- Hidden audio -->
+    <audio id="mp-audio" preload="none" crossorigin="anonymous"></audio>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="multi.js"></script>
+  </body>
+</html>

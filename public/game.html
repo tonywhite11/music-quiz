@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Music Quiz — Playing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Pacifico&display=swap" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="game.css" />
+  </head>
+  <body>
+    <!-- Background -->
+    <div class="smoke-layer" aria-hidden="true">
+      <div class="smoke smoke-1"></div>
+      <div class="smoke smoke-2"></div>
+      <div class="smoke smoke-3"></div>
+    </div>
+    <div class="notes-layer" id="notes-layer" aria-hidden="true"></div>
+
+    <!-- Game shell -->
+    <div class="game-shell">
+
+      <!-- Header -->
+      <header class="game-header">
+        <a href="index.html" class="back-btn" title="Back to home">&#8592;</a>
+        <span id="header-theme" class="header-theme">Blind Test</span>
+        <div class="header-right">
+          <span id="header-score" class="header-score">0 pts</span>
+          <span class="host-badge">🎧 AI DJ</span>
+</div>
+      </header>
+
+      <!-- ── PHASE: Theme selection ── -->
+      <section id="phase-theme" class="phase active">
+        <div class="phase-inner">
+          <h2 class="phase-heading">Choose a Theme</h2>
+
+          <!-- AI voice theme UI (replaces enable-voice button, shown in AI mode only) -->
+          <div id="ai-theme-ui" class="ai-theme-ui hidden">
+
+            <!-- State 1 — mic ring: tap to start 30s recording -->
+            <div id="ai-theme-listen-state" class="ai-theme-state">
+              <div class="ai-theme-ring-wrap">
+                <svg class="timer-svg" viewBox="0 0 100 100" aria-hidden="true">
+                  <circle class="timer-track" cx="50" cy="50" r="38"/>
+                  <circle class="timer-ring" cx="50" cy="50" r="38" id="ai-theme-ring"/>
+                </svg>
+                <button id="ai-theme-mic-btn" class="ai-theme-mic-btn" aria-label="Touch to speak">
+                  <svg class="ai-mic-svg-icon" viewBox="0 0 24 24" fill="none">
+                    <rect x="9" y="2" width="6" height="12" rx="3" fill="currentColor"/>
+                    <path d="M5 11a7 7 0 0 0 14 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                    <line x1="12" y1="18" x2="12" y2="22" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                    <line x1="8"  y1="22" x2="16" y2="22" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </div>
+              <p id="ai-theme-mic-label" class="ai-touch-label">Touch &amp; speak</p>
+              <p class="ai-touch-hint">Say your theme — <em>80s, Rock, Disney, Pop, Video Games…</em></p>
+              <div id="ai-theme-transcript" class="ai-theme-transcript hidden"></div>
+            </div>
+
+            <!-- State 2 — confirm detected theme -->
+            <div id="ai-theme-confirm-state" class="ai-theme-state hidden">
+              <div id="ai-confirm-card" class="ai-confirm-card"></div>
+              <div class="ai-confirm-actions">
+                <button id="ai-go-btn" class="btn btn-pink ai-go-btn">GO! 🎵</button>
+                <button id="ai-retry-btn" class="btn btn-ghost ai-retry-btn">🔄</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="themes-grid" id="themes-grid"></div>
+        </div>
+      </section>
+
+      <!-- ── PHASE: Loading ── -->
+      <section id="phase-loading" class="phase">
+        <div class="phase-inner loading-inner">
+          <div class="loading-robot">
+            <div class="robot-halo" style="width:140px;height:140px;"></div>
+            <div class="dj-orb dj-orb-small" aria-hidden="true">🎧</div>
+          </div>
+          <p class="loading-text">Loading tracks…</p>
+          <div class="loading-dots"><span></span><span></span><span></span></div>
+        </div>
+      </section>
+
+      <!-- ── PHASE: Playing ── -->
+      <section id="phase-playing" class="phase">
+        <div class="phase-inner playing-inner">
+
+          <div class="round-bar">
+            <span id="round-label" class="round-label">Round 1 / 10</span>
+            <span id="playing-theme" class="playing-theme-tag">Theme</span>
+          </div>
+
+          <!-- Visualizer + timer -->
+          <div class="viz-wrap">
+            <canvas id="visualizer" width="260" height="260"></canvas>
+            <div class="timer-overlay">
+              <svg class="timer-svg" viewBox="0 0 100 100" aria-hidden="true">
+                <circle class="timer-track" cx="50" cy="50" r="38"/>
+                <circle class="timer-ring"  cx="50" cy="50" r="38" id="timer-ring"/>
+              </svg>
+              <!-- Free mode: countdown number -->
+              <span id="timer-text" class="timer-text">30</span>
+              <!-- AI mode: tap-to-speak mic in the centre -->
+              <div id="ai-mic-center" class="ai-mic-center hidden">
+                <button id="ai-play-mic-btn" class="ai-play-mic-btn" aria-label="Tap to speak">
+                  <svg id="ai-play-mic-icon" class="ai-mic-svg-icon" viewBox="0 0 24 24" fill="none">
+                    <rect x="9" y="2" width="6" height="12" rx="3" fill="currentColor"/>
+                    <path d="M5 11a7 7 0 0 0 14 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                    <line x1="12" y1="18" x2="12" y2="22" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                    <line x1="8"  y1="22" x2="16" y2="22" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                  </svg>
+                </button>
+                <span id="ai-play-label" class="ai-play-label">Touch &amp; speak</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI mode hint + dual-field status (shown instead of text inputs) -->
+          <div id="ai-play-hint" class="ai-play-hint hidden">
+            <p class="ai-play-hint-text">Artist name, or film&nbsp;/&nbsp;series&nbsp;/&nbsp;game title</p>
+            <div id="ai-voice-status" class="ai-voice-status">
+              <span id="ai-artist-status" class="ai-field-chip">🎤 Artist</span>
+              <span id="ai-title-status"  class="ai-field-chip">🎤 Title</span>
+            </div>
+          </div>
+
+          <!-- Answer form (free mode) -->
+          <div id="answer-area" class="answer-area">
+            <div class="input-group">
+              <label class="input-label" for="artist-input">Artist</label>
+              <div class="input-wrap">
+                <input id="artist-input" type="text" class="answer-input"
+                  placeholder="Who?" autocomplete="off" spellcheck="false" />
+                <span id="artist-check" class="check-icon" aria-hidden="true"></span>
+              </div>
+            </div>
+            <div class="input-group">
+              <label class="input-label" for="title-input">Title</label>
+              <div class="input-wrap">
+                <input id="title-input" type="text" class="answer-input"
+                  placeholder="What song?" autocomplete="off" spellcheck="false" />
+                <span id="title-check" class="check-icon" aria-hidden="true"></span>
+              </div>
+            </div>
+            <button id="submit-btn" class="btn btn-pink submit-btn">&#10003;&nbsp; Submit</button>
+          </div>
+
+          <!-- Skip — shown in both modes -->
+          <button id="skip-btn" class="btn btn-ghost skip-btn">Skip</button>
+
+          <!-- Progress dots -->
+          <div id="progress-dots" class="progress-dots"></div>
+        </div>
+      </section>
+
+      <!-- ── PHASE: Revealing ── -->
+      <section id="phase-revealing" class="phase">
+        <div class="phase-inner reveal-inner">
+
+          <div class="reveal-album-wrap">
+            <img id="album-cover" class="album-cover" src="" alt="Album cover" />
+            <div class="album-glow"></div>
+          </div>
+
+          <div class="reveal-meta">
+            <div id="reveal-artist" class="reveal-artist">—</div>
+            <div id="reveal-title"  class="reveal-title">—</div>
+          </div>
+
+          <div class="reveal-scores">
+            <div class="score-row">
+              <span id="artist-result" class="result-icon">—</span>
+              <span class="score-row-label">Artist</span>
+              <span id="artist-pts" class="score-row-pts">0 pts</span>
+            </div>
+            <div class="score-row">
+              <span id="title-result" class="result-icon">—</span>
+              <span class="score-row-label">Title</span>
+              <span id="title-pts" class="score-row-pts">0 pts</span>
+            </div>
+            <div class="score-row score-row-bonus">
+              <span class="result-icon">&#9889;</span>
+              <span class="score-row-label">Speed bonus</span>
+              <span id="bonus-pts" class="score-row-pts">+0 pts</span>
+            </div>
+          </div>
+
+          <div class="round-total">
+            <span>Round total</span>
+            <span id="round-total-pts" class="round-total-pts">0 pts</span>
+          </div>
+
+          <button id="next-btn" class="btn btn-cyan next-btn">Next Round &#8594;</button>
+        </div>
+      </section>
+
+      <!-- ── PHASE: Game Over ── -->
+      <section id="phase-gameover" class="phase">
+        <div class="phase-inner gameover-inner">
+          <h2 class="go-heading neon-title" style="font-size:clamp(32px,7vw,56px)">Game Over!</h2>
+
+          <div class="final-score-block">
+            <span id="final-score" class="final-score-num">0</span>
+            <span class="final-score-denom">/ 1200</span>
+          </div>
+
+          <div class="score-bar-track">
+            <div id="score-bar-fill" class="score-bar-fill"></div>
+          </div>
+
+          <div id="badge-area" class="badge-area"></div>
+
+          <!-- Leaderboard -->
+          <div id="leaderboard-section" class="leaderboard-section hidden">
+            <div class="leaderboard-header">
+              <span class="leaderboard-title">🏆 <span id="leaderboard-theme-label">Theme</span> Leaderboard</span>
+              <span id="leaderboard-save-status" class="leaderboard-save-status"></span>
+            </div>
+            <ol id="leaderboard-list" class="leaderboard-list"></ol>
+          </div>
+
+          <div id="rounds-recap" class="rounds-recap"></div>
+
+          <div class="go-actions">
+            <button id="play-again-btn" class="btn btn-pink">&#9654;&nbsp; Play Again</button>
+            <a href="index.html" class="btn btn-cyan">Home</a>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /game-shell -->
+    <!-- Floating points popup -->
+    <div id="points-popup" class="points-popup hidden" aria-live="polite"></div>
+
+    <!-- Hidden audio elements -->
+    <audio id="preview-audio" preload="none" crossorigin="anonymous"></audio>
+    <audio id="tts-audio"     preload="none"></audio>
+
+    <script type="module" src="game.js"></script>
+  </body>
+</html>
