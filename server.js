@@ -283,6 +283,7 @@ io.on('connection', socket => {
     room.players.forEach(p => { p.score = 0; });
 
     io.to(code).emit('game-start', {
+      themeId:     room.theme?.id     || '',
       themeLabel:  room.theme?.label  || 'Music Quiz',
       themeEmoji:  room.theme?.emoji  || '🎵',
       totalRounds: Math.min(ROOM_ROUNDS, room.tracks.length),

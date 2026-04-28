@@ -1,7 +1,6 @@
 /* =========================================================
    Blind Test — Multiplayer Client
-   ========================================================= */
-
+   ========================================================= */import { supaInsert } from './supabase-client.js';
 /* ── THEMES (compact set for multiplayer theme picker) ────── */
 const THEMES = [
   { id: 'pop80s',   label: '80s Pop',       emoji: '🎸', tracks: [
@@ -665,11 +664,11 @@ socket.on('host-changed', ({ hostId }) => {
   }
 });
 
-socket.on('game-start', ({ themeLabel, themeEmoji, totalRounds }) => {
+socket.on('game-start', ({ themeId, themeLabel, themeEmoji, totalRounds }) => {
   mp.totalRounds = totalRounds;
   mp.round       = 0;
   mp.submitted   = false;
-  mp.theme = { label: themeLabel, emoji: themeEmoji };
+  mp.theme = { id: themeId, label: themeLabel, emoji: themeEmoji };
 
   document.getElementById('mp-theme-tag').textContent = `${themeEmoji} ${themeLabel}`;
   document.getElementById('loading-phase-text').textContent = `${themeEmoji} ${themeLabel} — Get ready!`;
@@ -774,6 +773,19 @@ socket.on('game-end', ({ scores }) => {
   if (mp.autoTimer) { clearInterval(mp.autoTimer); mp.autoTimer = null; }
   renderGameOver(scores);
   showPhase('phase-gameover');
+
+  // Save this player's score to Supabase
+  const myName  = mp.myName || localStorage.getItem('quiz-player-name') || 'Anonymous';
+  const myEntry = scores.find(p => p.name === myName);
+  if (myEntry && myEntry.score > 0 && mp.theme?.id) {
+    supaInsert('quiz_scores', {
+      player_name: myName,
+      theme_id:    mp.theme.id,
+      theme_label: mp.theme.label || 'Multiplayer',
+      score:       myEntry.score,
+      mode:        'multi',
+    }).catch(() => {}); // silently ignore network errors
+  }
 });
 
 /* ── Auto-advance countdown (guest) ─────────────────────── */
@@ -797,6 +809,8 @@ document.getElementById('create-room-btn').addEventListener('click', () => {
   const name = document.getElementById('player-name-input').value.trim();
   if (!name) return showError('Please enter your name first.');
   document.getElementById('join-error').style.display = 'none';
+  mp.myName = name;
+  localStorage.setItem('quiz-player-name', name);
   socket.emit('create-room', { name });
 });
 
@@ -807,8 +821,16 @@ document.getElementById('join-room-btn').addEventListener('click', () => {
   if (!name) return showError('Please enter your name first.');
   if (code.length !== 4) return showError('Enter the 4-letter room code.');
   document.getElementById('join-error').style.display = 'none';
+  mp.myName = name;
+  localStorage.setItem('quiz-player-name', name);
   socket.emit('join-room', { name, code });
 });
+
+// Pre-fill name from localStorage if available
+(function () {
+  const saved = localStorage.getItem('quiz-player-name');
+  if (saved) document.getElementById('player-name-input').value = saved;
+})();
 
 // Allow Enter key on code input to join
 document.getElementById('join-code-input').addEventListener('keydown', e => {

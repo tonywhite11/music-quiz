@@ -121,6 +121,36 @@
 .custom-input:focus { border-color: var(--neon-cyan); }
 .custom-input::placeholder { color: oklch(0.98 0.01 320 / 0.35); }
 
+/* ── Player nickname bar (theme picker) ── */
+.player-name-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  background: oklch(0.18 0.04 290 / 0.7);
+  border: 1px solid oklch(0.6 0.2 300 / 0.2);
+  border-radius: 12px;
+}
+.player-name-bar-label {
+  font-size: 13px;
+  color: var(--foreground-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.player-name-bar-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 0;
+}
+.player-name-bar-input::placeholder { color: oklch(0.98 0.01 320 / 0.3); }
+
 .themes-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

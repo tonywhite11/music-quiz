@@ -1,6 +1,17 @@
 /* =========================================================
    Blind Test — Game Logic
    ========================================================= */
+import { supaInsert, supaFetch } from './supabase-client.js';
+
+/* ── Nickname ────────────────────────────────────────────── */
+function getPlayerName() {
+  return localStorage.getItem('quiz-player-name') || 'Anonymous';
+}
+function savePlayerName(name) {
+  const clean = String(name || '').trim().slice(0, 20) || 'Anonymous';
+  localStorage.setItem('quiz-player-name', clean);
+  return clean;
+}
 
 /* ── Audio routing (browser-only) ────────────────────────── */
 // Cleaned version: no robot WebRTC routing, just local browser audio.
@@ -1741,6 +1752,11 @@ async function selectTheme(theme) {
 
   stopListening(); // stop theme-listening if active
   stopAIThemeTimer();
+
+  // Save nickname at game-start time (in case user didn't blur the input)
+  const nameInput = document.getElementById("player-name-solo");
+  if (nameInput && nameInput.value.trim()) savePlayerName(nameInput.value);
+
   state.theme = theme;
   document.getElementById("header-theme").textContent = theme.label;
   document.getElementById("playing-theme").textContent = theme.label;
@@ -1926,33 +1942,40 @@ function showReveal(track, artistOk, titleOk, bonus, pts) {
   }
 }
 
-/* ── Leaderboard ─────────────────────────────────────── */
-// Standalone local leaderboard. Scores are saved in this browser only.
-function _scoreStoreKey() { return "ai-music-quiz-scores-v1"; }
-function fetchAllScores() {
-  try { return Promise.resolve(JSON.parse(localStorage.getItem(_scoreStoreKey()) || "{}")); }
-  catch { return Promise.resolve({}); }
-}
+/* ── Leaderboard (Supabase) ──────────────────────────────── */
 async function fetchLeaderboard(themeId) {
-  const data = await fetchAllScores();
-  return (data[themeId] || []).sort((a, b) => b.s - a.s).slice(0, 10);
+  const rows = await supaFetch('quiz_scores', {
+    theme_id: `eq.${themeId}`,
+    mode:     'eq.solo',
+    order:    'score.desc',
+    limit:    '10',
+    select:   'player_name,score,played_at',
+  });
+  return rows.map(r => ({
+    u: r.player_name,
+    n: r.player_name,
+    s: r.score,
+    d: r.played_at ? r.played_at.slice(0, 10) : '',
+  }));
 }
 async function saveScore({ displayName, themeId, themeLabel, score }) {
-  if (!themeId || themeId === "random" || !score) return null;
-  const data = await fetchAllScores();
-  const entries = data[themeId] || [];
-  entries.push({
-    u: displayName || "Local Player",
-    n: displayName || "Local Player",
-    s: score,
-    d: new Date().toISOString().slice(0,10),
-    theme_label: themeLabel,
-  });
-  data[themeId] = entries.sort((a,b)=>b.s-a.s).slice(0,10);
-  localStorage.setItem(_scoreStoreKey(), JSON.stringify(data));
-  const el = document.getElementById("leaderboard-save-status");
-  if (el) { el.textContent = "✓ Saved locally"; el.className = "leaderboard-save-status ok"; }
-  return data[themeId];
+  if (!themeId || themeId === 'random' || !score) return null;
+  try {
+    await supaInsert('quiz_scores', {
+      player_name: displayName || 'Anonymous',
+      theme_id:    themeId,
+      theme_label: themeLabel,
+      score,
+      mode: 'solo',
+    });
+    const el = document.getElementById('leaderboard-save-status');
+    if (el) { el.textContent = '✓ Saved'; el.className = 'leaderboard-save-status ok'; }
+    return fetchLeaderboard(themeId);
+  } catch (_) {
+    const el = document.getElementById('leaderboard-save-status');
+    if (el) { el.textContent = '⚠ Save failed'; el.className = 'leaderboard-save-status err'; }
+    return null;
+  }
 }
 
 function renderLeaderboard(entries, themeId, currentUsername) {
@@ -2053,7 +2076,7 @@ function showGameOver() {
 
   // AI mode: head wobble + rich spoken summary
   if (state.mode === "openai") {
-    const username = "Local Player";
+    const username = getPlayerName();
     const themeForSpeech = state.theme?.id;
     const scoreForSpeech = total;
 
@@ -2109,7 +2132,7 @@ function showGameOver() {
       document.getElementById("leaderboard-theme-label").textContent =
         `${state.theme.emoji} ${state.theme.label}`;
 
-      const username = "Local Player";
+      const username = getPlayerName();
       const displayName = username;
       const avatarUrl = "";
 
@@ -2156,6 +2179,14 @@ function init() {
   const params = new URLSearchParams(location.search);
   state.mode = params.get("mode") || "free";
   state.openaiKey = state.mode === "openai" ? "server" : null;
+
+  // Nickname input — pre-fill from localStorage and save on change
+  const nameInput = document.getElementById("player-name-solo");
+  if (nameInput) {
+    nameInput.value = getPlayerName() === 'Anonymous' ? '' : getPlayerName();
+    nameInput.addEventListener("change", () => savePlayerName(nameInput.value));
+    nameInput.addEventListener("blur",   () => savePlayerName(nameInput.value));
+  }
 
   spawnNotes();
   buildThemeGrid();
