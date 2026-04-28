@@ -29,8 +29,50 @@
         <div class="header-right">
           <span id="header-score" class="header-score">0 pts</span>
           <span class="host-badge">🎧 AI DJ</span>
-</div>
+          <button id="help-btn" class="help-btn" title="How to score" aria-label="Scoring help">?</button>
+        </div>
       </header>
+
+      <!-- Scoring help modal -->
+      <div id="help-modal" class="help-modal hidden" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">
+        <div class="help-modal-inner">
+          <button class="profile-close" id="help-modal-close" aria-label="Close">&#10005;</button>
+          <h3 class="help-modal-title" id="help-modal-title">&#127925;&nbsp; Scoring Guide</h3>
+          <div class="help-score-grid">
+            <div class="help-score-item">
+              <span class="help-score-emoji">🎤</span>
+              <span class="help-score-label">Artist correct</span>
+              <span class="help-score-val">50 pts</span>
+            </div>
+            <div class="help-score-item">
+              <span class="help-score-emoji">🎵</span>
+              <span class="help-score-label">Title correct</span>
+              <span class="help-score-val">50 pts</span>
+            </div>
+            <div class="help-score-item">
+              <span class="help-score-emoji">⚡</span>
+              <span class="help-score-label">Answer in under 10s</span>
+              <span class="help-score-val">+20 pts</span>
+            </div>
+            <div class="help-score-item">
+              <span class="help-score-emoji">⏱️</span>
+              <span class="help-score-label">Answer in under 20s</span>
+              <span class="help-score-val">+10 pts</span>
+            </div>
+            <div class="help-score-item">
+              <span class="help-score-emoji">⏳</span>
+              <span class="help-score-label">Answer in under 25s</span>
+              <span class="help-score-val">+5 pts</span>
+            </div>
+            <div class="help-score-item help-score-item--max">
+              <span class="help-score-emoji">🏆</span>
+              <span class="help-score-label">Max per round</span>
+              <span class="help-score-val">120 pts</span>
+            </div>
+          </div>
+          <p class="help-tip">💡 Tip: Fuzzy spelling counts — close enough is good enough!</p>
+        </div>
+      </div>
 
       <!-- ── PHASE: Theme selection ── -->
       <section id="phase-theme" class="phase active">

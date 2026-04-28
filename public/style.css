@@ -359,6 +359,124 @@ html, body {
   box-shadow: 0 0 14px var(--neon-violet), 0 0 32px var(--neon-violet);
 }
 
+/* ── How-to-play trigger & modal ── */
+.howto-trigger {
+  background: none;
+  border: 1px solid oklch(0.98 0.01 320 / 0.15);
+  color: var(--foreground-muted);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 16px;
+  border-radius: 9999px;
+  cursor: pointer;
+  margin-top: 14px;
+  transition: border-color 0.2s, color 0.2s;
+}
+.howto-trigger:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); }
+
+.howto-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(0 0 0 / 0.7);
+  backdrop-filter: blur(6px);
+  padding: 20px;
+}
+.howto-backdrop.hidden { display: none; }
+
+.howto-card {
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: oklch(0.14 0.05 290);
+  border: 1px solid oklch(0.65 0.27 300 / 0.4);
+  border-radius: 24px;
+  padding: 28px 24px 32px;
+  position: relative;
+  animation: howto-in 0.22s ease-out;
+}
+@keyframes howto-in {
+  from { transform: translateY(16px) scale(0.97); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.howto-close {
+  position: absolute;
+  top: 14px; right: 16px;
+  background: none;
+  border: none;
+  color: var(--foreground-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  line-height: 1;
+}
+.howto-close:hover { color: var(--foreground); }
+
+.howto-title {
+  font-family: 'Pacifico', cursive;
+  font-size: 22px;
+  color: var(--neon-violet);
+  margin: 0 0 20px;
+  text-shadow: 0 0 12px oklch(0.65 0.27 300 / 0.6);
+}
+.howto-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.howto-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--foreground);
+}
+.howto-step-num {
+  flex-shrink: 0;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: oklch(0.65 0.27 300 / 0.2);
+  border: 1px solid oklch(0.65 0.27 300 / 0.5);
+  color: var(--neon-violet);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.howto-scoring {
+  background: oklch(0.18 0.07 285 / 0.8);
+  border: 1px solid oklch(0.65 0.27 300 / 0.2);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.howto-scoring-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--foreground-muted);
+  margin-bottom: 10px;
+}
+.howto-score-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 3px 0;
+  color: var(--foreground);
+}
+.howto-score-val { color: var(--neon-cyan); font-weight: 600; }
+.howto-btn { display: block; width: 100%; margin-top: 20px; }
+
 /* =========================================================
    AI panel
    ========================================================= */

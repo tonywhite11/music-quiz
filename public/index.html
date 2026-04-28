@@ -59,8 +59,34 @@
             &#127918;&nbsp; Multiplayer
           </a>
         </div>
+
+        <button id="how-to-play-btn" type="button" class="howto-trigger">&#9432;&nbsp; How to Play</button>
       </div>
     </main>
+
+    <!-- How-to-play modal -->
+    <div id="howto-modal" class="howto-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="howto-title">
+      <div class="howto-card">
+        <button class="howto-close" id="howto-close" aria-label="Close">&#10005;</button>
+        <h2 class="howto-title" id="howto-title">&#127925;&nbsp; How to Play</h2>
+        <ol class="howto-steps">
+          <li><span class="howto-step-num">1</span><span>Pick a <strong>theme</strong> — 80s Pop, Rock, Disney, and many more.</span></li>
+          <li><span class="howto-step-num">2</span><span>A <strong>30-second preview</strong> plays. Listen carefully!</span></li>
+          <li><span class="howto-step-num">3</span><span>Type the <strong>Artist</strong> and <strong>Song Title</strong> — fuzzy spelling is accepted.</span></li>
+          <li><span class="howto-step-num">4</span><span>Hit <strong>Submit</strong> before the timer runs out.</span></li>
+          <li><span class="howto-step-num">5</span><span>Play <strong>10 rounds</strong>. Score as high as you can!</span></li>
+        </ol>
+        <div class="howto-scoring">
+          <div class="howto-scoring-title">Scoring per round</div>
+          <div class="howto-score-row"><span>Artist correct</span><span class="howto-score-val">50 pts</span></div>
+          <div class="howto-score-row"><span>Title correct</span><span class="howto-score-val">50 pts</span></div>
+          <div class="howto-score-row"><span>Speed bonus (answer in &lt;10s)</span><span class="howto-score-val">+20 pts</span></div>
+          <div class="howto-score-row"><span>Maximum per round</span><span class="howto-score-val">120 pts</span></div>
+          <div class="howto-score-row"><span>Maximum total (10 rounds)</span><span class="howto-score-val">1200 pts</span></div>
+        </div>
+        <button id="howto-got-it" class="btn btn-pink howto-btn">Got it — Let's Play!</button>
+      </div>
+    </div>
 
     <script src="script.js"></script>
 

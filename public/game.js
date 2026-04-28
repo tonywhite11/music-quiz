@@ -937,6 +937,63 @@ const THEMES = [
     { a: "Tate McRae",         t: "Greedy" },
     { a: "Ice Spice",          t: "Princess Diana" },
   ]},
+  { id: "pop90s",   label: "90s Pop",        emoji: "📼", bpm: 115, tracks: [
+    { a: "Backstreet Boys",  t: "I Want It That Way" },
+    { a: "NSYNC",            t: "Bye Bye Bye" },
+    { a: "Spice Girls",      t: "Wannabe" },
+    { a: "Destiny's Child",  t: "Say My Name" },
+    { a: "TLC",              t: "No Scrubs" },
+    { a: "No Doubt",         t: "Don't Speak" },
+    { a: "Mariah Carey",     t: "Fantasy" },
+    { a: "Whitney Houston",  t: "I Will Always Love You" },
+    { a: "Shania Twain",     t: "That Don't Impress Me Much" },
+    { a: "Boyzone",          t: "Words" },
+    { a: "Take That",        t: "Back for Good" },
+    { a: "All Saints",       t: "Never Ever" },
+    { a: "Savage Garden",    t: "Truly Madly Deeply" },
+    { a: "Hanson",           t: "MMMBop" },
+    { a: "Aqua",             t: "Barbie Girl" },
+    { a: "Ace of Base",      t: "All That She Wants" },
+    { a: "Robbie Williams",  t: "Angels" },
+    { a: "Celine Dion",      t: "My Heart Will Go On" },
+    { a: "Boyz II Men",      t: "End of the Road" },
+    { a: "En Vogue",         t: "Don't Let Go" },
+    { a: "Sheryl Crow",      t: "All I Wanna Do" },
+    { a: "Alanis Morissette", t: "You Oughta Know" },
+    { a: "Coolio",           t: "Gangsta's Paradise" },
+    { a: "Hootie and the Blowfish", t: "Hold My Hand" },
+    { a: "4 Non Blondes",    t: "What's Up" },
+    { a: "Backstreet Boys",  t: "Everybody (Backstreet's Back)" },
+    { a: "NSYNC",            t: "Tearin' Up My Heart" },
+    { a: "Spice Girls",      t: "Say You'll Be There" },
+    { a: "Britney Spears",   t: "...Baby One More Time" },
+    { a: "Christina Aguilera", t: "Genie in a Bottle" },
+    { a: "Destiny's Child",  t: "Bills, Bills, Bills" },
+  ]},
+  { id: "kids",     label: "Kids & Family",  emoji: "🧸", bpm: 100, tracks: [
+    { a: "Pinkfong",         t: "Baby Shark" },
+    { a: "Pharrell Williams", t: "Happy" },
+    { a: "Justin Timberlake", t: "Can't Stop the Feeling" },
+    { a: "Tegan and Sara",   t: "Everything Is Awesome" },
+    { a: "Jason Paige",      t: "Pokémon Theme" },
+    { a: "PSY",              t: "Gangnam Style" },
+    { a: "Los del Rio",      t: "Macarena" },
+    { a: "Village People",   t: "Y.M.C.A." },
+    { a: "Julie Andrews",    t: "Do Re Mi" },
+    { a: "Julie Andrews",    t: "Supercalifragilisticexpialidocious" },
+    { a: "Bob the Builder",  t: "Can We Fix It" },
+    { a: "The Wiggles",      t: "Hot Potato" },
+    { a: "Idina Menzel",     t: "Let It Go" },
+    { a: "Randy Newman",     t: "You've Got a Friend in Me" },
+    { a: "Lin-Manuel Miranda", t: "We Don't Talk About Bruno" },
+    { a: "Auli'i Cravalho",  t: "How Far I'll Go" },
+    { a: "Elton John",       t: "Circle of Life" },
+    { a: "Donny Osmond",     t: "I'll Make a Man Out of You" },
+    { a: "American Authors", t: "Best Day of My Life" },
+    { a: "Raffi",            t: "Baby Beluga" },
+    { a: "Owl City",         t: "Fireflies" },
+    { a: "Daft Punk",        t: "Around the World" },
+  ]},
   { id: "random",    label: "Random Mix",        emoji: "🎲", bpm: 110, tracks: null, random: true },
 ];
 
@@ -982,6 +1039,18 @@ function robotReact(correct, _resumeDance = false) {
 }
 function startRobotWobble() { document.body.classList.add("host-speaking"); }
 function stopRobotWobble() { document.body.classList.remove("host-speaking"); }
+
+/* ── In-game help modal ──────────────────────────────────── */
+(function () {
+  const modal    = document.getElementById("help-modal");
+  const openBtn  = document.getElementById("help-btn");
+  const closeBtn = document.getElementById("help-modal-close");
+  if (!modal || !openBtn) return;
+  openBtn.addEventListener("click",  () => modal.classList.remove("hidden"));
+  closeBtn.addEventListener("click", () => modal.classList.add("hidden"));
+  modal.addEventListener("click", (e) => { if (e.target === modal) modal.classList.add("hidden"); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") modal.classList.add("hidden"); });
+})();
 
 /* ── Deezer JSONP ────────────────────────────────────────── */
 function deezerSearch(q) {

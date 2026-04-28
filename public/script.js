@@ -25,4 +25,23 @@
   document.getElementById("play-ai").addEventListener("click", () => {
     window.location.href = "game.html?mode=openai";
   });
+
+  // ── How-to-play modal ──────────────────────────────────
+  const howtoModal  = document.getElementById("howto-modal");
+  const howtoOpen   = document.getElementById("how-to-play-btn");
+  const howtoClose  = document.getElementById("howto-close");
+  const howtoGotIt  = document.getElementById("howto-got-it");
+
+  function openHowto()  { howtoModal.classList.remove("hidden"); }
+  function closeHowto() { howtoModal.classList.add("hidden"); }
+
+  howtoOpen.addEventListener("click", openHowto);
+  howtoClose.addEventListener("click", closeHowto);
+  howtoGotIt.addEventListener("click", closeHowto);
+  howtoModal.addEventListener("click", (e) => {
+    if (e.target === howtoModal) closeHowto();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeHowto();
+  });
 })();

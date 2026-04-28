@@ -600,8 +600,170 @@
   100% { opacity: 0; transform: translateX(-50%) translateY(-80px); }
 }
 
-/* ── Profile modal ── */
+/* ── In-game help button ── */
+.help-btn {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid oklch(0.98 0.01 320 / 0.2);
+  background: none;
+  color: var(--foreground-muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.help-btn:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); }
+
+/* ── In-game help modal ── */
+.help-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: oklch(0 0 0 / 0.55);
+  backdrop-filter: blur(4px);
+  padding: 0 0 env(safe-area-inset-bottom, 0);
+}
+.help-modal.hidden { display: none; }
+.help-modal-inner {
+  width: 100%;
+  max-width: 480px;
+  background: oklch(0.14 0.03 300);
+  border: 1px solid oklch(0.6 0.2 300 / 0.2);
+  border-radius: 24px 24px 0 0;
+  padding: 24px 20px 36px;
+  position: relative;
+  animation: slideUp 0.25s ease-out;
+}
+.help-modal-title {
+  font-family: 'Pacifico', cursive;
+  font-size: 18px;
+  color: var(--neon-cyan);
+  margin: 0 0 18px;
+  text-shadow: 0 0 10px oklch(0.85 0.18 200 / 0.6);
+}
+.help-score-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.help-score-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: oklch(0.2 0.06 285 / 0.6);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+.help-score-item--max {
+  border: 1px solid oklch(0.65 0.27 300 / 0.3);
+  background: oklch(0.65 0.27 300 / 0.1);
+}
+.help-score-emoji { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+.help-score-label { flex: 1; color: var(--foreground); }
+.help-score-val { color: var(--neon-cyan); font-weight: 700; font-size: 15px; flex-shrink: 0; }
+.help-tip {
+  font-size: 13px;
+  color: var(--foreground-muted);
+  margin: 0;
+  text-align: center;
+}
+
+/* ── Profile modal (restored) ── */
 .profile-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: oklch(0 0 0 / 0.55);
+  backdrop-filter: blur(4px);
+  padding: 0 0 env(safe-area-inset-bottom, 0);
+}
+
+/* ── In-game help button ── */
+.help-btn {
+  flex-shrink: 0;
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid oklch(0.98 0.01 320 / 0.2);
+  background: none;
+  color: var(--foreground-muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.help-btn:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); }
+
+/* ── In-game help modal ── */
+.help-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: oklch(0 0 0 / 0.55);
+  backdrop-filter: blur(4px);
+  padding: 0 0 env(safe-area-inset-bottom, 0);
+}
+.help-modal.hidden { display: none; }
+.help-modal-inner {
+  width: 100%;
+  max-width: 480px;
+  background: oklch(0.14 0.03 300);
+  border: 1px solid oklch(0.6 0.2 300 / 0.2);
+  border-radius: 24px 24px 0 0;
+  padding: 24px 20px 36px;
+  position: relative;
+  animation: slideUp 0.25s ease-out;
+}
+.help-modal-title {
+  font-family: 'Pacifico', cursive;
+  font-size: 18px;
+  color: var(--neon-cyan);
+  margin: 0 0 18px;
+  text-shadow: 0 0 10px oklch(0.85 0.18 200 / 0.6);
+}
+.help-score-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.help-score-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: oklch(0.2 0.06 285 / 0.6);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+.help-score-item--max {
+  border: 1px solid oklch(0.65 0.27 300 / 0.3);
+  background: oklch(0.65 0.27 300 / 0.1);
+}
+.help-score-emoji { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+.help-score-label { flex: 1; color: var(--foreground); }
+.help-score-val { color: var(--neon-cyan); font-weight: 700; font-size: 15px; flex-shrink: 0; }
+.help-tip {
+  font-size: 13px;
+  color: var(--foreground-muted);
+  margin: 0;
+  text-align: center;
+}
   position: fixed;
   inset: 0;
   z-index: 200;
