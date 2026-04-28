@@ -362,10 +362,276 @@ const mp = {
   submitted:    false,
   myResult:     null,
   themeFetching: false,
+  myId:         null,      // unique client ID (replaces socket.id)
+  myName:       null,
+  channel:      null,      // Supabase Realtime channel
+  guestScores:  null,      // { [id]: score } — used by non-host players
+  _joinTimeout: null,      // timeout handle for join attempt
 };
 
-/* ── Socket ──────────────────────────────────────────────── */
-const socket = window.io();
+/* ── Supabase Realtime ───────────────────────────────────── */
+const SUPA_URL = 'https://zqhpmyooctdcrjfniddp.supabase.co';
+const SUPA_KEY = 'sb_publishable_BBClJv-XVLplkpCNf0uvOg_mPnECHMC';
+const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+
+/* ── Room code generator ─────────────────────────────────── */
+function genRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for (let i = 0; i < 4; i++) c += chars[Math.floor(Math.random() * chars.length)];
+  return c;
+}
+
+/* ── Fuzzy answer matching (mirrors server.js) ───────────── */
+function norm(s) {
+  return String(s).toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+function lev(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)));
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1]
+        ? dp[i-1][j-1]
+        : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  return dp[m][n];
+}
+function answerOk(guess, answer) {
+  const g = norm(guess), a = norm(answer);
+  if (!g || !a) return false;
+  if (g === a) return true;
+  if (a.length >= 4 && g.includes(a)) return true;
+  if (a.length >= 4 && a.includes(g) && g.length >= Math.floor(a.length * 0.6)) return true;
+  const tol = a.length <= 5 ? 1 : a.length <= 10 ? 2 : 3;
+  return lev(g, a) <= tol;
+}
+function speedBonus(elapsed) {
+  return elapsed <= 10 ? 20 : elapsed <= 20 ? 10 : elapsed <= 25 ? 5 : 0;
+}
+
+/* ── Host-side room state ────────────────────────────────── */
+const ROOM_ROUNDS   = 10;
+const ROOM_DURATION_S = 30;
+const REVEAL_PAUSE_MS = 8000;
+
+const hostState = {
+  players:        new Map(), // id → { name, avatar, score }
+  tracks:         [],
+  round:          0,
+  phase:          'lobby',   // lobby | starting | playing | revealing | gameover
+  roundAnswers:   new Map(), // id → { artistOk, titleOk, pts }
+  roundStartTime: null,
+  roundTimer:     null,
+};
+
+function hostGetScores() {
+  const arr = [];
+  hostState.players.forEach((p, id) =>
+    arr.push({ id, name: p.name, avatar: p.avatar, score: p.score }));
+  return arr.sort((a, b) => b.score - a.score);
+}
+
+function hostBuildPlayersList() {
+  const players = [];
+  hostState.players.forEach((p, id) =>
+    players.push({ id, name: p.name, avatar: p.avatar, isHost: id === mp.myId, score: p.score }));
+  return players;
+}
+
+/* ── Broadcast helper ────────────────────────────────────── */
+function bcast(event, payload = {}) {
+  mp.channel?.send({ type: 'broadcast', event, payload });
+}
+
+/* ── Channel setup ───────────────────────────────────────── */
+function setupChannel(code) {
+  if (mp.channel) { mp.channel.unsubscribe(); mp.channel = null; }
+  const ch = supa.channel(`game:${code}`, {
+    config: {
+      broadcast: { self: false },
+      presence:  { key: mp.myId },
+    },
+  });
+  mp.channel = ch;
+
+  // Presence: update lobby player list
+  const syncPlayers = () => {
+    const players = presenceToPlayers();
+    mp.players = players;
+    const phase = document.querySelector('.mp-phase.active')?.id;
+    if (phase === 'phase-lobby') renderLobbyPlayers(players);
+  };
+  ch.on('presence', { event: 'sync' },  syncPlayers);
+  ch.on('presence', { event: 'join' },  syncPlayers);
+  ch.on('presence', { event: 'leave' }, syncPlayers);
+
+  // Join handshake
+  ch.on('broadcast', { event: 'join-request' }, ({ payload }) => hostHandleJoinRequest(payload));
+  ch.on('broadcast', { event: 'join-ack' },     ({ payload }) => guestHandleJoinAck(payload));
+  ch.on('broadcast', { event: 'join-error' },   ({ payload }) => guestHandleJoinError(payload));
+
+  // Game flow
+  ch.on('broadcast', { event: 'game-start' },   ({ payload }) => onGameStart(payload));
+  ch.on('broadcast', { event: 'round-start' },  ({ payload }) => onRoundStart(payload));
+  ch.on('broadcast', { event: 'submit-answer' },({ payload }) => hostHandleAnswer(payload));
+  ch.on('broadcast', { event: 'answer-result' },({ payload }) => onAnswerResult(payload));
+  ch.on('broadcast', { event: 'score-update' }, ({ payload }) => onScoreUpdate(payload));
+  ch.on('broadcast', { event: 'round-end' },    ({ payload }) => onRoundEnd(payload));
+  ch.on('broadcast', { event: 'game-end' },     ({ payload }) => onGameEnd(payload));
+
+  return ch;
+}
+
+function presenceToPlayers() {
+  if (!mp.channel) return mp.players;
+  const state = mp.channel.presenceState();
+  const players = [];
+  for (const [key, presences] of Object.entries(state)) {
+    const p = presences[0];
+    if (!p) continue;
+    players.push({
+      id:     key,
+      name:   String(p.name   || 'Player'),
+      avatar: String(p.avatar || '🎵'),
+      isHost: !!p.isHost,
+      score:  mp.isHost
+        ? (hostState.players.get(key)?.score ?? 0)
+        : (mp.guestScores?.[key] ?? 0),
+    });
+  }
+  return players.sort((a, b) => (b.isHost ? 1 : 0) - (a.isHost ? 1 : 0));
+}
+
+/* ── Host: join-request handler ──────────────────────────── */
+function hostHandleJoinRequest({ playerId, name, avatar }) {
+  if (!mp.isHost) return;
+  const safeName = String(name || 'Player').trim().replace(/[<>"']/g, '').slice(0, 20) || 'Player';
+  if (hostState.phase !== 'lobby') {
+    bcast('join-error', { forId: playerId, message: 'Game already in progress.' });
+    return;
+  }
+  if (hostState.players.size >= 8) {
+    bcast('join-error', { forId: playerId, message: 'Room is full (max 8).' });
+    return;
+  }
+  hostState.players.set(playerId, { name: safeName, avatar: String(avatar || '🎵'), score: 0 });
+  const players = hostBuildPlayersList();
+  bcast('join-ack',      { forId: playerId, code: mp.roomCode, players });
+  bcast('players-update',{ players });
+  mp.players = players;
+  renderLobbyPlayers(players);
+}
+
+/* ── Host: answer handler ────────────────────────────────── */
+function hostHandleAnswer({ playerId, artist, title }) {
+  if (!mp.isHost || hostState.phase !== 'playing') return;
+  if (hostState.roundAnswers.has(playerId)) return;
+  const tr = hostState.tracks[hostState.round];
+  if (!tr) return;
+  const elapsed  = (Date.now() - hostState.roundStartTime) / 1000;
+  const artistOk = answerOk(artist,  tr.src ?? tr.a);
+  const titleOk  = answerOk(title,   tr.t);
+  const bonus    = (artistOk || titleOk) ? speedBonus(elapsed) : 0;
+  const pts      = (artistOk ? 100 : 0) + (titleOk ? 100 : 0) + bonus;
+  hostState.roundAnswers.set(playerId, { artistOk, titleOk, pts });
+  const player = hostState.players.get(playerId);
+  if (player) player.score += pts;
+  bcast('answer-result', { forId: playerId, artistOk, titleOk, pts });
+  const answeredCount = hostState.roundAnswers.size;
+  const totalPlayers  = hostState.players.size;
+  const scores = hostGetScores();
+  bcast('score-update', { scores, answeredCount, totalPlayers });
+  // Also update host's own score display
+  onScoreUpdate({ scores, answeredCount, totalPlayers });
+  // Auto-advance when all players have answered
+  if (answeredCount >= totalPlayers) {
+    if (hostState.roundTimer) { clearTimeout(hostState.roundTimer); hostState.roundTimer = null; }
+    hostEndRound();
+  }
+}
+
+/* ── Host: game flow ─────────────────────────────────────── */
+function hostStartRound() {
+  if (hostState.round >= hostState.tracks.length || hostState.round >= ROOM_ROUNDS) {
+    hostEndGame(); return;
+  }
+  hostState.phase        = 'playing';
+  hostState.roundAnswers = new Map();
+  hostState.roundStartTime = Date.now();
+  const tr = hostState.tracks[hostState.round];
+  const payload = {
+    round:      hostState.round + 1,
+    total:      Math.min(ROOM_ROUNDS, hostState.tracks.length),
+    previewUrl: tr.previewUrl,
+    startedAt:  hostState.roundStartTime,
+  };
+  bcast('round-start', payload);
+  onRoundStart(payload); // host processes own round-start
+  hostState.roundTimer = setTimeout(() => hostEndRound(), ROOM_DURATION_S * 1000);
+}
+
+function hostEndRound() {
+  if (hostState.roundTimer) { clearTimeout(hostState.roundTimer); hostState.roundTimer = null; }
+  if (hostState.phase !== 'playing') return;
+  hostState.phase = 'revealing';
+  const tr = hostState.tracks[hostState.round];
+  const results = [];
+  hostState.players.forEach((p, id) => {
+    const ans = hostState.roundAnswers.get(id) || { artistOk: false, titleOk: false, pts: 0 };
+    results.push({ id, name: p.name, avatar: p.avatar, artistOk: ans.artistOk, titleOk: ans.titleOk, pts: ans.pts });
+  });
+  const payload = {
+    round:         hostState.round + 1,
+    correctArtist: tr.src ?? tr.a,
+    correctTitle:  tr.t,
+    cover:         tr.cover || null,
+    results,
+    scores:        hostGetScores(),
+  };
+  bcast('round-end', payload);
+  onRoundEnd(payload); // host processes own round-end
+  hostState.round++;
+  const hasMore = hostState.round < Math.min(ROOM_ROUNDS, hostState.tracks.length);
+  hostState.roundTimer = setTimeout(() => {
+    if (hostState.phase === 'revealing') {
+      hasMore ? hostStartRound() : hostEndGame();
+    }
+  }, REVEAL_PAUSE_MS);
+}
+
+function hostEndGame() {
+  if (hostState.roundTimer) { clearTimeout(hostState.roundTimer); hostState.roundTimer = null; }
+  hostState.phase = 'gameover';
+  const payload = { scores: hostGetScores() };
+  bcast('game-end', payload);
+  onGameEnd(payload);
+  setTimeout(() => { mp.channel?.unsubscribe(); mp.channel = null; }, 5 * 60 * 1000);
+}
+
+/* ── Guest: join handlers ────────────────────────────────── */
+function guestHandleJoinAck({ forId, code, players }) {
+  if (forId !== mp.myId) return;
+  if (mp._joinTimeout) { clearTimeout(mp._joinTimeout); mp._joinTimeout = null; }
+  mp.players = players;
+  mp.guestScores = {};
+  players.forEach(p => { mp.guestScores[p.id] = p.score || 0; });
+  document.getElementById('room-code-display').textContent = code;
+  renderLobbyPlayers(players);
+  document.getElementById('host-controls').style.display = 'none';
+  document.getElementById('guest-waiting').style.display = 'block';
+  showPhase('phase-lobby');
+}
+
+function guestHandleJoinError({ forId, message }) {
+  if (forId !== mp.myId) return;
+  if (mp._joinTimeout) { clearTimeout(mp._joinTimeout); mp._joinTimeout = null; }
+  mp.channel?.unsubscribe();
+  mp.channel = null;
+  showError(message || 'Could not join room.');
+}
 
 /* ── Audio ───────────────────────────────────────────────── */
 const audio = document.getElementById('mp-audio');
@@ -604,83 +870,31 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-/* ── Socket event handlers ───────────────────────────────── */
+/* ── Broadcast event handlers ────────────────────────────── */
 
-socket.on('room-created', ({ code, players }) => {
-  mp.roomCode = code;
-  mp.isHost   = true;
-  mp.players  = players;
-  document.getElementById('room-code-display').textContent = code;
-  renderLobbyPlayers(players);
-  document.getElementById('host-controls').style.display = 'block';
-  document.getElementById('guest-waiting').style.display = 'none';
-  buildThemeGrid();
-  showPhase('phase-lobby');
-});
-
-socket.on('room-joined', ({ code, players }) => {
-  mp.roomCode = code;
-  mp.isHost   = false;
-  mp.players  = players;
-  document.getElementById('room-code-display').textContent = code;
-  renderLobbyPlayers(players);
-  document.getElementById('host-controls').style.display = 'none';
-  document.getElementById('guest-waiting').style.display = 'block';
-  showPhase('phase-lobby');
-});
-
-socket.on('error', ({ message }) => {
-  showError(message);
-});
-
-socket.on('players-update', ({ players }) => {
+function onPlayersUpdate({ players }) {
   mp.players = players;
-  renderLobbyPlayers(players);
-
-  // Update host badge on playing screen if needed
-  if (mp.isHost) return;
-  const me = players.find(p => p.isHost);
-  // Check if we became host
-  const mySocket = socket.id;
-  const iAmHost = players.find(p => p.id === mySocket && p.isHost);
-  if (iAmHost && !mp.isHost) {
-    mp.isHost = true;
-    // Show host-only controls if in lobby
-    document.getElementById('host-controls').style.display = 'block';
-    document.getElementById('guest-waiting').style.display = 'none';
-    buildThemeGrid();
+  if (!mp.isHost && mp.guestScores) {
+    players.forEach(p => { mp.guestScores[p.id] = p.score || 0; });
   }
-});
+  const phase = document.querySelector('.mp-phase.active')?.id;
+  if (phase === 'phase-lobby') renderLobbyPlayers(players);
+}
 
-socket.on('host-changed', ({ hostId }) => {
-  if (socket.id === hostId) {
-    mp.isHost = true;
-    // Show skip button if playing
-    const skipBtn = document.getElementById('mp-skip-btn');
-    const nextBtn = document.getElementById('mp-next-btn');
-    if (skipBtn) skipBtn.style.display = 'block';
-    if (nextBtn) nextBtn.style.display = 'block';
-    document.getElementById('auto-advance-msg').style.display = 'none';
-  }
-});
-
-socket.on('game-start', ({ themeId, themeLabel, themeEmoji, totalRounds }) => {
+function onGameStart({ themeId, themeLabel, themeEmoji, totalRounds }) {
   mp.totalRounds = totalRounds;
   mp.round       = 0;
   mp.submitted   = false;
   mp.theme = { id: themeId, label: themeLabel, emoji: themeEmoji };
-
   document.getElementById('mp-theme-tag').textContent = `${themeEmoji} ${themeLabel}`;
   document.getElementById('loading-phase-text').textContent = `${themeEmoji} ${themeLabel} — Get ready!`;
   showPhase('phase-loading');
-});
+}
 
-socket.on('round-start', ({ round, total, previewUrl, startedAt }) => {
+function onRoundStart({ round, total, previewUrl, startedAt }) {
   mp.round     = round;
   mp.submitted = false;
   mp.myResult  = null;
-
-  // Reset answer UI
   document.getElementById('mp-artist-input').value = '';
   document.getElementById('mp-title-input').value  = '';
   document.getElementById('mp-artist-check').textContent = '';
@@ -688,71 +902,53 @@ socket.on('round-start', ({ round, total, previewUrl, startedAt }) => {
   document.getElementById('mp-answer-area').style.display = 'block';
   document.getElementById('mp-answered-banner').style.display = 'none';
   document.getElementById('mp-round-label').textContent = `Round ${round} / ${total}`;
-
-  // Host skip button
   document.getElementById('mp-skip-btn').style.display = mp.isHost ? 'block' : 'none';
-
-  // Start timer
   timerStart(startedAt);
-
-  // Play audio
   playPreview(previewUrl);
-
-  // Clear live scores answered status
   renderLiveScores(mp.players.map(p => ({ ...p })), new Set());
-
   showPhase('phase-playing');
-});
+}
 
-socket.on('answer-result', ({ artistOk, titleOk, pts }) => {
+function onAnswerResult({ forId, artistOk, titleOk, pts }) {
+  if (forId !== mp.myId) return;
   mp.myResult  = { artistOk, titleOk, pts };
   mp.submitted = true;
-
-  // Show check marks
   document.getElementById('mp-artist-check').textContent = artistOk ? '✅' : '❌';
   document.getElementById('mp-title-check').textContent  = titleOk  ? '✅' : '❌';
-
-  // Hide form, show banner
   document.getElementById('mp-answer-area').style.display = 'none';
   document.getElementById('mp-answered-banner').style.display = 'block';
   document.getElementById('mp-answered-banner').innerHTML =
     `${artistOk && titleOk ? '🎉' : artistOk || titleOk ? '👍' : '😅'} 
      ${pts > 0 ? `+${pts} pts` : 'No points'} — Waiting for others…`;
-});
+}
 
-socket.on('score-update', ({ scores, answeredCount, totalPlayers }) => {
+function onScoreUpdate({ scores, answeredCount, totalPlayers }) {
   mp.players = scores;
-  // Build answered set — we can't know exactly who answered from just count,
-  // so we highlight rows where score changed. For simplicity just show answered count.
+  if (!mp.isHost && mp.guestScores) {
+    scores.forEach(p => { mp.guestScores[p.id] = p.score || 0; });
+  }
   renderLiveScores(scores, new Set());
-  // Show answering progress on the live scores title
   const title = document.querySelector('#live-scores-wrap .live-scores-title');
   if (title) title.textContent = `Live Scores (${answeredCount}/${totalPlayers} answered)`;
-});
+}
 
-socket.on('round-end', ({ round, correctArtist, correctTitle, cover, results, scores }) => {
+function onRoundEnd({ round, correctArtist, correctTitle, cover, results, scores }) {
   timerStop();
   stopPreview();
-
-  // Reveal phase
   const coverImg  = document.getElementById('mp-cover-img');
   const coverPlac = document.getElementById('mp-cover-placeholder');
   if (cover) {
-    coverImg.src          = cover;
+    coverImg.src = cover;
     coverImg.style.display = 'block';
     coverPlac.style.display = 'none';
   } else {
     coverImg.style.display  = 'none';
     coverPlac.style.display = 'flex';
   }
-
   document.getElementById('mp-correct-artist').textContent = correctArtist;
   document.getElementById('mp-correct-title').textContent  = correctTitle;
-
   renderRoundResults(results);
   renderRevealScores(scores);
-
-  // Next round controls
   const nextBtn = document.getElementById('mp-next-btn');
   const autoMsg = document.getElementById('auto-advance-msg');
   if (mp.isHost) {
@@ -763,18 +959,15 @@ socket.on('round-end', ({ round, correctArtist, correctTitle, cover, results, sc
     autoMsg.style.display = 'block';
     startAutoCountdown(8);
   }
-
   showPhase('phase-reveal');
-});
+}
 
-socket.on('game-end', ({ scores }) => {
+function onGameEnd({ scores }) {
   timerStop();
   stopPreview();
   if (mp.autoTimer) { clearInterval(mp.autoTimer); mp.autoTimer = null; }
   renderGameOver(scores);
   showPhase('phase-gameover');
-
-  // Save this player's score to Supabase
   const myName  = mp.myName || localStorage.getItem('quiz-player-name') || 'Anonymous';
   const myEntry = scores.find(p => p.name === myName);
   if (myEntry && myEntry.score > 0 && mp.theme?.id) {
@@ -784,9 +977,9 @@ socket.on('game-end', ({ scores }) => {
       theme_label: mp.theme.label || 'Multiplayer',
       score:       myEntry.score,
       mode:        'multi',
-    }).catch(() => {}); // silently ignore network errors
+    }).catch(() => {});
   }
-});
+}
 
 /* ── Auto-advance countdown (guest) ─────────────────────── */
 function startAutoCountdown(secs) {
@@ -803,27 +996,72 @@ function startAutoCountdown(secs) {
 
 /* ── DOM bindings ────────────────────────────────────────── */
 
-// Join phase
-document.getElementById('create-room-btn').addEventListener('click', () => {
+// Create room
+document.getElementById('create-room-btn').addEventListener('click', async () => {
   initAudio();
   const name = document.getElementById('player-name-input').value.trim();
   if (!name) return showError('Please enter your name first.');
   document.getElementById('join-error').style.display = 'none';
+  mp.myId   = Math.random().toString(36).substring(2, 11);
   mp.myName = name;
+  mp.isHost = true;
   localStorage.setItem('quiz-player-name', name);
-  socket.emit('create-room', { name });
+
+  const code = genRoomCode();
+  mp.roomCode = code;
+
+  // Reset host state
+  Object.assign(hostState, {
+    players: new Map([[mp.myId, { name, avatar: '🎧', score: 0 }]]),
+    tracks: [], round: 0, phase: 'lobby',
+    roundAnswers: new Map(), roundTimer: null, roundStartTime: null,
+  });
+
+  const ch = setupChannel(code);
+  ch.subscribe(async (status) => {
+    if (status === 'SUBSCRIBED') {
+      await ch.track({ name, avatar: '🎧', isHost: true });
+      document.getElementById('room-code-display').textContent = code;
+      mp.players = [{ id: mp.myId, name, avatar: '🎧', isHost: true, score: 0 }];
+      renderLobbyPlayers(mp.players);
+      document.getElementById('host-controls').style.display = 'block';
+      document.getElementById('guest-waiting').style.display = 'none';
+      buildThemeGrid();
+      showPhase('phase-lobby');
+    }
+  });
 });
 
-document.getElementById('join-room-btn').addEventListener('click', () => {
+document.getElementById('join-room-btn').addEventListener('click', async () => {
   initAudio();
   const name = document.getElementById('player-name-input').value.trim();
-  const code = document.getElementById('join-code-input').value.trim();
+  const code = document.getElementById('join-code-input').value.trim().toUpperCase().slice(0, 4);
   if (!name) return showError('Please enter your name first.');
   if (code.length !== 4) return showError('Enter the 4-letter room code.');
   document.getElementById('join-error').style.display = 'none';
+  mp.myId   = Math.random().toString(36).substring(2, 11);
   mp.myName = name;
+  mp.isHost = false;
+  mp.guestScores = {};
+  mp.roomCode = code;
   localStorage.setItem('quiz-player-name', name);
-  socket.emit('join-room', { name, code });
+
+  const ch = setupChannel(code);
+
+  // Timeout if the host never acks
+  mp._joinTimeout = setTimeout(() => {
+    mp._joinTimeout = null;
+    ch.unsubscribe();
+    mp.channel = null;
+    showError('Room not found. Check the code and try again.');
+  }, 6000);
+
+  ch.subscribe(async (status) => {
+    if (status === 'SUBSCRIBED') {
+      await ch.track({ name, avatar: '🎵', isHost: false });
+      bcast('join-request', { playerId: mp.myId, name, avatar: '🎵' });
+    }
+  });
 });
 
 // Pre-fill name from localStorage if available
@@ -856,16 +1094,39 @@ document.getElementById('copy-link-btn').addEventListener('click', () => {
   });
 });
 
-// Start game (host)
+// Start game (host only)
 document.getElementById('start-game-btn').addEventListener('click', () => {
   if (!mp.enrichedTracks.length) return;
-  socket.emit('start-game', {
-    tracks: mp.enrichedTracks,
-    theme:  mp.selectedTheme
-      ? { id: mp.selectedTheme.id, label: mp.selectedTheme.label, emoji: mp.selectedTheme.emoji }
-      : null,
-  });
+  hostState.tracks = mp.enrichedTracks
+    .filter(t => t && typeof t.previewUrl === 'string' && t.previewUrl.startsWith('https://'))
+    .map(t => ({
+      a:          String(t.a   || '').slice(0, 100),
+      t:          String(t.t   || '').slice(0, 100),
+      src:        t.src ? String(t.src).slice(0, 100) : undefined,
+      previewUrl: t.previewUrl,
+      cover:      typeof t.cover === 'string' && t.cover.startsWith('https://') ? t.cover : null,
+    }))
+    .slice(0, ROOM_ROUNDS + 3);
+
+  if (hostState.tracks.length < 1) {
+    showError('No valid previews found. Try a different theme.');
+    return;
+  }
+
+  const theme = mp.selectedTheme
+    ? { id: mp.selectedTheme.id, label: mp.selectedTheme.label, emoji: mp.selectedTheme.emoji }
+    : { id: '', label: 'Music Quiz', emoji: '🎵' };
+
+  hostState.round = 0;
+  hostState.phase = 'starting';
+  hostState.players.forEach(p => { p.score = 0; });
+
+  const totalRounds = Math.min(ROOM_ROUNDS, hostState.tracks.length);
+  const startPayload = { themeId: theme.id, themeLabel: theme.label, themeEmoji: theme.emoji, totalRounds };
+  bcast('game-start', startPayload);
+  onGameStart(startPayload);
   document.getElementById('start-game-btn').disabled = true;
+  setTimeout(() => hostStartRound(), 2000);
 });
 
 // Submit answer
@@ -878,18 +1139,25 @@ function submitAnswer() {
   const artist = document.getElementById('mp-artist-input').value.trim();
   const title  = document.getElementById('mp-title-input').value.trim();
   if (!artist && !title) return;
-  socket.emit('submit-answer', { artist, title });
+  if (mp.isHost) {
+    hostHandleAnswer({ playerId: mp.myId, artist, title });
+  } else {
+    bcast('submit-answer', { playerId: mp.myId, artist, title });
+  }
 }
 
-// Skip (host)
+// Skip round (host only)
 document.getElementById('mp-skip-btn').addEventListener('click', () => {
-  socket.emit('skip-round');
+  if (mp.isHost) hostEndRound();
 });
 
-// Next round (host)
+// Next round (host only)
 document.getElementById('mp-next-btn').addEventListener('click', () => {
-  socket.emit('next-round');
+  if (!mp.isHost) return;
   document.getElementById('mp-next-btn').style.display = 'none';
+  if (hostState.roundTimer) { clearTimeout(hostState.roundTimer); hostState.roundTimer = null; }
+  const hasMore = hostState.round < Math.min(ROOM_ROUNDS, hostState.tracks.length);
+  if (hasMore) { hostStartRound(); } else { hostEndGame(); }
 });
 
 // Play again
