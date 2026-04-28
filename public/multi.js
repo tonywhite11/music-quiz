@@ -374,8 +374,143 @@ const SUPA_URL = 'https://zqhpmyooctdcrjfniddp.supabase.co';
 const SUPA_KEY = 'sb_publishable_BBClJv-XVLplkpCNf0uvOg_mPnECHMC';
 const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
-/* ── Room code generator ─────────────────────────────────── */
-function genRoomCode() {
+/* ── Mic permission ──────────────────────────────────────── */
+// Prime permission and check Speech API availability early so
+// the browser doesn't block recognition mid-round.
+async function primeMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const micBtn = document.getElementById('mp-mic-btn');
+  const noSupport = document.getElementById('mp-mic-no-support');
+
+  if (!SR) {
+    if (micBtn)    micBtn.style.display = 'none';
+    if (noSupport) noSupport.style.display = 'block';
+    return;
+  }
+  // On iOS Safari getUserMedia is required first to unlock AudioSession
+  // for both audio playback AND SpeechRecognition simultaneously.
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Keep the stream alive — stopping it revokes mic and breaks recognition on iOS.
+    window._micStream = stream;
+  } catch (e) {
+    console.warn('Mic permission denied:', e);
+    if (micBtn)    micBtn.style.display = 'none';
+    if (noSupport) { noSupport.textContent = '🎤 Mic access denied — type your answers'; noSupport.style.display = 'block'; }
+  }
+}
+
+/* ── Speech Recognition ──────────────────────────────────── */
+let _recognition = null;
+
+function startMicAnswer() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR || mp.submitted) return;
+  stopMicAnswer();
+
+  const rec = new SR();
+  rec.lang           = 'en-US';
+  rec.interimResults = true;
+  rec.continuous     = false;
+  rec.maxAlternatives = 1;
+
+  const micBtn   = document.getElementById('mp-mic-btn');
+  const micIcon  = document.getElementById('mp-mic-icon');
+  const micLabel = document.getElementById('mp-mic-label');
+
+  if (micBtn)   micBtn.classList.add('listening');
+  if (micIcon)  micIcon.textContent = '🔴';
+  if (micLabel) micLabel.textContent = 'Listening…';
+
+  rec.onresult = (e) => {
+    let interim = '', final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t;
+      else                      interim += t;
+    }
+    const heard = (final || interim).trim();
+    if (heard) parseVoiceAnswer(heard);
+    if (final) {
+      stopMicAnswer();
+      autoSubmitAfterVoice();
+    }
+  };
+
+  rec.onerror = (e) => {
+    if (e.error === 'no-speech' || e.error === 'aborted') { stopMicAnswer(); return; }
+    console.warn('STT error:', e.error);
+    stopMicAnswer();
+    if (micBtn)   micBtn.classList.add('wrong');
+    if (micLabel) micLabel.textContent = 'Try again';
+    setTimeout(() => resetMicBtn(), 1500);
+  };
+
+  rec.onend = () => { stopMicAnswer(); };
+
+  _recognition = rec;
+  try {
+    rec.start();
+  } catch (e) {
+    console.warn('STT start failed:', e);
+    stopMicAnswer();
+  }
+
+  // iOS: audio may pause when mic activates — auto-resume
+  const mpAudio = document.getElementById('mp-audio');
+  if (mpAudio) {
+    mpAudio.addEventListener('pause', function onPause() {
+      if (_recognition && !mp.submitted) {
+        setTimeout(() => { if (mpAudio.paused && !mp.submitted) mpAudio.play().catch(() => {}); }, 300);
+      } else {
+        mpAudio.removeEventListener('pause', onPause);
+      }
+    });
+  }
+}
+
+function stopMicAnswer() {
+  if (_recognition) {
+    try { _recognition.stop(); } catch (_) {}
+    _recognition = null;
+  }
+  resetMicBtn();
+}
+
+function resetMicBtn() {
+  const micBtn   = document.getElementById('mp-mic-btn');
+  const micIcon  = document.getElementById('mp-mic-icon');
+  const micLabel = document.getElementById('mp-mic-label');
+  if (micBtn)   { micBtn.classList.remove('listening', 'wrong'); }
+  if (micIcon)  micIcon.textContent = '🎤';
+  if (micLabel) micLabel.textContent = 'Speak Answer';
+}
+
+// Parse "Artist by Title" / "Title by Artist" / freeform into fields
+function parseVoiceAnswer(transcript) {
+  const t = transcript.trim();
+  const artistInput = document.getElementById('mp-artist-input');
+  const titleInput  = document.getElementById('mp-title-input');
+  // Look for "X by Y" pattern
+  const byMatch = t.match(/^(.+?)\s+by\s+(.+)$/i);
+  if (byMatch) {
+    // Could be "Title by Artist" or "Artist by Title" — fill both fields
+    titleInput.value  = byMatch[1].trim();
+    artistInput.value = byMatch[2].trim();
+  } else {
+    // Just put everything in title field; user might already have artist typed
+    titleInput.value = t;
+  }
+}
+
+function autoSubmitAfterVoice() {
+  if (mp.submitted) return;
+  const artist = document.getElementById('mp-artist-input').value.trim();
+  const title  = document.getElementById('mp-title-input').value.trim();
+  if (artist || title) submitAnswer();
+}
+
+
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let c = '';
   for (let i = 0; i < 4; i++) c += chars[Math.floor(Math.random() * chars.length)];
@@ -425,6 +560,7 @@ const hostState = {
   roundAnswers:   new Map(), // id → { artistOk, titleOk, pts }
   roundStartTime: null,
   roundTimer:     null,
+  replayCount:    0,         // how many times music replayed this round
 };
 
 function hostGetScores() {
@@ -472,6 +608,7 @@ function setupChannel(code) {
   ch.on('broadcast', { event: 'join-request' }, ({ payload }) => hostHandleJoinRequest(payload));
   ch.on('broadcast', { event: 'join-ack' },     ({ payload }) => guestHandleJoinAck(payload));
   ch.on('broadcast', { event: 'join-error' },   ({ payload }) => guestHandleJoinError(payload));
+  ch.on('broadcast', { event: 'players-update' },({ payload }) => onPlayersUpdate(payload));
 
   // Game flow
   ch.on('broadcast', { event: 'game-start' },   ({ payload }) => onGameStart(payload));
@@ -480,6 +617,7 @@ function setupChannel(code) {
   ch.on('broadcast', { event: 'answer-result' },({ payload }) => onAnswerResult(payload));
   ch.on('broadcast', { event: 'score-update' }, ({ payload }) => onScoreUpdate(payload));
   ch.on('broadcast', { event: 'round-end' },    ({ payload }) => onRoundEnd(payload));
+  ch.on('broadcast', { event: 'replay-music' }, ({ payload }) => onReplayMusic(payload));
   ch.on('broadcast', { event: 'game-end' },     ({ payload }) => onGameEnd(payload));
 
   return ch;
@@ -544,12 +682,18 @@ function hostHandleAnswer({ playerId, artist, title }) {
   const totalPlayers  = hostState.players.size;
   const scores = hostGetScores();
   bcast('score-update', { scores, answeredCount, totalPlayers });
-  // Also update host's own score display
   onScoreUpdate({ scores, answeredCount, totalPlayers });
-  // Auto-advance when all players have answered
+
+  // All players answered — check for replay or end
   if (answeredCount >= totalPlayers) {
     if (hostState.roundTimer) { clearTimeout(hostState.roundTimer); hostState.roundTimer = null; }
-    hostEndRound();
+    const allWrong = [...hostState.roundAnswers.values()].every(a => a.pts === 0);
+    const timeLeft = ROOM_DURATION_S - ((Date.now() - hostState.roundStartTime) / 1000);
+    if (allWrong && timeLeft > 8 && hostState.replayCount < 2) {
+      hostReplayMusic();
+    } else {
+      hostEndRound();
+    }
   }
 }
 
@@ -561,6 +705,7 @@ function hostStartRound() {
   hostState.phase        = 'playing';
   hostState.roundAnswers = new Map();
   hostState.roundStartTime = Date.now();
+  hostState.replayCount  = 0;
   const tr = hostState.tracks[hostState.round];
   const payload = {
     round:      hostState.round + 1,
@@ -570,6 +715,19 @@ function hostStartRound() {
   };
   bcast('round-start', payload);
   onRoundStart(payload); // host processes own round-start
+  hostState.roundTimer = setTimeout(() => hostEndRound(), ROOM_DURATION_S * 1000);
+}
+
+function hostReplayMusic() {
+  hostState.replayCount++;
+  hostState.roundAnswers = new Map(); // reset so everyone can answer again
+  hostState.roundStartTime = Date.now();
+  const tr = hostState.tracks[hostState.round];
+  const payload = { previewUrl: tr.previewUrl, startedAt: hostState.roundStartTime };
+  bcast('replay-music', payload);
+  onReplayMusic(payload); // host processes own replay
+  // Give full duration again for the replay
+  if (hostState.roundTimer) { clearTimeout(hostState.roundTimer); hostState.roundTimer = null; }
   hostState.roundTimer = setTimeout(() => hostEndRound(), ROOM_DURATION_S * 1000);
 }
 
@@ -901,18 +1059,47 @@ function onRoundStart({ round, total, previewUrl, startedAt }) {
   document.getElementById('mp-title-check').textContent  = '';
   document.getElementById('mp-answer-area').style.display = 'block';
   document.getElementById('mp-answered-banner').style.display = 'none';
+  document.getElementById('mp-replay-banner').style.display = 'none';
   document.getElementById('mp-round-label').textContent = `Round ${round} / ${total}`;
   document.getElementById('mp-skip-btn').style.display = mp.isHost ? 'block' : 'none';
+  const micBtn = document.getElementById('mp-mic-btn');
+  if (micBtn) micBtn.disabled = false;
+  resetMicBtn();
   timerStart(startedAt);
   playPreview(previewUrl);
   renderLiveScores(mp.players.map(p => ({ ...p })), new Set());
   showPhase('phase-playing');
 }
 
+function onReplayMusic({ previewUrl, startedAt }) {
+  // Reset submissions so everyone can answer again
+  mp.submitted = false;
+  mp.myResult  = null;
+  document.getElementById('mp-artist-input').value = '';
+  document.getElementById('mp-title-input').value  = '';
+  document.getElementById('mp-artist-check').textContent = '';
+  document.getElementById('mp-title-check').textContent  = '';
+  document.getElementById('mp-answer-area').style.display = 'block';
+  document.getElementById('mp-answered-banner').style.display = 'none';
+  const replayBanner = document.getElementById('mp-replay-banner');
+  if (replayBanner) { replayBanner.style.display = 'block'; }
+  const micBtn = document.getElementById('mp-mic-btn');
+  if (micBtn) micBtn.disabled = false;
+  resetMicBtn();
+  stopMicAnswer();
+  timerStart(startedAt);
+  playPreview(previewUrl);
+  // Hide replay banner after 3s
+  setTimeout(() => { if (replayBanner) replayBanner.style.display = 'none'; }, 3000);
+}
+
 function onAnswerResult({ forId, artistOk, titleOk, pts }) {
   if (forId !== mp.myId) return;
   mp.myResult  = { artistOk, titleOk, pts };
   mp.submitted = true;
+  stopMicAnswer();
+  const micBtn = document.getElementById('mp-mic-btn');
+  if (micBtn) micBtn.disabled = true;
   document.getElementById('mp-artist-check').textContent = artistOk ? '✅' : '❌';
   document.getElementById('mp-title-check').textContent  = titleOk  ? '✅' : '❌';
   document.getElementById('mp-answer-area').style.display = 'none';
@@ -1006,6 +1193,7 @@ document.getElementById('create-room-btn').addEventListener('click', async () =>
   mp.myName = name;
   mp.isHost = true;
   localStorage.setItem('quiz-player-name', name);
+  primeMic(); // request mic permission early
 
   const code = genRoomCode();
   mp.roomCode = code;
@@ -1045,6 +1233,7 @@ document.getElementById('join-room-btn').addEventListener('click', async () => {
   mp.guestScores = {};
   mp.roomCode = code;
   localStorage.setItem('quiz-player-name', name);
+  primeMic(); // request mic permission early
 
   const ch = setupChannel(code);
 
@@ -1127,6 +1316,12 @@ document.getElementById('start-game-btn').addEventListener('click', () => {
   onGameStart(startPayload);
   document.getElementById('start-game-btn').disabled = true;
   setTimeout(() => hostStartRound(), 2000);
+});
+
+// Mic button
+document.getElementById('mp-mic-btn').addEventListener('click', () => {
+  if (_recognition) { stopMicAnswer(); return; }
+  startMicAnswer();
 });
 
 // Submit answer

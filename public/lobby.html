@@ -254,6 +254,58 @@
         margin-bottom: 16px;
       }
 
+      /* ── Voice button ─────────────────────────────────── */
+      .mic-btn-wrap { width: 100%; margin-bottom: 12px; }
+      .mp-mic-btn {
+        width: 100%;
+        height: 52px;
+        border-radius: 14px;
+        border: 2px solid oklch(0.65 0.27 300 / 0.6);
+        background: oklch(0.2 0.09 285 / 0.7);
+        color: var(--foreground);
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+      }
+      .mp-mic-btn.listening {
+        background: oklch(0.25 0.18 300 / 0.8);
+        border-color: var(--neon-violet);
+        box-shadow: 0 0 18px oklch(0.65 0.27 300 / 0.55);
+        animation: mic-pulse 1.2s ease-in-out infinite;
+      }
+      .mp-mic-btn.wrong {
+        background: oklch(0.25 0.18 20 / 0.7);
+        border-color: var(--neon-pink);
+      }
+      .mp-mic-btn:disabled { opacity: 0.4; cursor: default; }
+      @keyframes mic-pulse {
+        0%, 100% { box-shadow: 0 0 12px oklch(0.65 0.27 300 / 0.4); }
+        50%       { box-shadow: 0 0 28px oklch(0.65 0.27 300 / 0.85); }
+      }
+      .mic-no-support {
+        font-size: 12px;
+        color: var(--foreground-muted);
+        text-align: center;
+        margin-bottom: 8px;
+        display: none;
+      }
+      .replay-banner {
+        text-align: center;
+        padding: 10px;
+        background: oklch(0.28 0.15 50 / 0.35);
+        border: 1px solid oklch(0.7 0.18 50 / 0.5);
+        border-radius: 12px;
+        color: oklch(0.85 0.15 50);
+        font-size: 14px;
+        margin-bottom: 12px;
+        display: none;
+      }
+
       .live-scores { width: 100%; }
       .live-scores-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--foreground-muted); margin-bottom: 8px; }
       .live-score-row {
@@ -500,10 +552,19 @@
               <span id="mp-title-check" class="check-icon" aria-hidden="true"></span>
             </div>
           </div>
+          <div class="mic-btn-wrap">
+            <p class="mic-no-support" id="mp-mic-no-support">🎤 Voice not supported — type your answer (use Safari on iPhone/iPad)</p>
+            <button id="mp-mic-btn" class="mp-mic-btn" title="Speak your answer">
+              <span id="mp-mic-icon">🎤</span>
+              <span id="mp-mic-label">Speak Answer</span>
+            </button>
+          </div>
           <button id="mp-submit-btn" class="btn btn-pink" style="width:100%;height:48px;font-size:15px;margin-top:4px">
             &#10003;&nbsp; Submit
           </button>
         </div>
+
+        <div id="mp-replay-banner" class="replay-banner">🔁 Everyone missed it — music is replaying!</div>
 
         <button id="mp-skip-btn" class="btn btn-ghost skip-btn" style="display:none">Skip Round</button>
 
