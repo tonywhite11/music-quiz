@@ -1,7 +1,7 @@
 /* =========================================================
    Blind Test — Game Logic
    ========================================================= */
-import { supaInsert, supaFetch } from './supabase-client.js';
+/* Supabase calls moved to server-side — no client keys exposed */
 
 /* ── Nickname ────────────────────────────────────────────── */
 function getPlayerName() {
@@ -1026,6 +1026,9 @@ const state = {
   timerStart: null,
   roundStartTime: null,
   submitted: false,
+  combo: 0,              // current correct streak
+  maxCombo: 0,           // best streak this game
+  hintsUsed: 0,          // total hint uses this game
   danceInterval: null,
   listeningPhase: null,  // "theme" | "playing" | null  (AI mode only)
   aiArtistFound: false,  // AI mode: artist confirmed by voice this round
@@ -1063,29 +1066,92 @@ function stopRobotWobble() { document.body.classList.remove("host-speaking"); }
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") modal.classList.add("hidden"); });
 })();
 
-/* ── Deezer JSONP ────────────────────────────────────────── */
-function deezerSearch(q) {
-  return new Promise((resolve) => {
-    const cb = `_dz${Date.now()}${Math.random().toString(36).slice(2)}`;
-    const script = document.createElement("script");
-    const cleanup = () => { delete window[cb]; script.remove(); };
-    window[cb] = (data) => { cleanup(); resolve(data?.data?.[0] ?? null); };
-    script.onerror = () => { cleanup(); resolve(null); };
-    script.src = `https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=1&output=jsonp&callback=${cb}`;
-    document.head.appendChild(script);
-    setTimeout(() => { cleanup(); resolve(null); }, 5000);
-  });
-}
-
+/* ── iTunes preview search (server proxy) ───────────────── */
 async function enrichTracks(rawTracks) {
   const results = await Promise.all(
-    rawTracks.map(({ a, t }) => deezerSearch(`${a} ${t}`))
+    rawTracks.map(async ({ a, t }) => {
+      try {
+        const res = await fetch(`/api/preview-search?q=${encodeURIComponent(a + ' ' + t)}`);
+        return res.ok ? await res.json() : null;
+      } catch { return null; }
+    })
   );
   return rawTracks.map((raw, i) => ({
     ...raw,
-    previewUrl: results[i]?.preview ?? null,
-    cover: results[i]?.album?.cover_medium ?? null,
-  })).filter((tr) => tr.previewUrl);
+    previewUrl: results[i]?.previewUrl ?? null,
+    cover:      results[i]?.cover      ?? null,
+  })).filter(tr => tr.previewUrl);
+}
+
+/* ── Sound effects (Web Audio API) ─────────────────────── */
+function sfx(type) {
+  try {
+    if (_audioCtx.state !== 'running') return;
+    if (type === 'correct' || type === 'wrong') {
+      const osc = _audioCtx.createOscillator();
+      const gain = _audioCtx.createGain();
+      osc.connect(gain); gain.connect(_audioCtx.destination);
+      if (type === 'correct') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(660, _audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(880, _audioCtx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.14, _audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, _audioCtx.currentTime + 0.22);
+        osc.start(_audioCtx.currentTime); osc.stop(_audioCtx.currentTime + 0.22);
+      } else {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, _audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(130, _audioCtx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.1, _audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, _audioCtx.currentTime + 0.22);
+        osc.start(_audioCtx.currentTime); osc.stop(_audioCtx.currentTime + 0.22);
+      }
+    } else if (type === 'combo') {
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const o = _audioCtx.createOscillator();
+        const g = _audioCtx.createGain();
+        o.connect(g); g.connect(_audioCtx.destination);
+        o.type = 'sine'; o.frequency.value = f;
+        const t = _audioCtx.currentTime + i * 0.07;
+        g.gain.setValueAtTime(0.13, t); g.gain.linearRampToValueAtTime(0, t + 0.13);
+        o.start(t); o.stop(t + 0.14);
+      });
+    } else if (type === 'timeout') {
+      const osc = _audioCtx.createOscillator();
+      const gain = _audioCtx.createGain();
+      osc.connect(gain); gain.connect(_audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(380, _audioCtx.currentTime);
+      osc.frequency.linearRampToValueAtTime(200, _audioCtx.currentTime + 0.45);
+      gain.gain.setValueAtTime(0.13, _audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0, _audioCtx.currentTime + 0.48);
+      osc.start(_audioCtx.currentTime); osc.stop(_audioCtx.currentTime + 0.5);
+    }
+  } catch (_) { /* silent */ }
+}
+
+/* ── Combo badge ─────────────────────────────────────────── */
+function updateComboBadge() {
+  const badge = document.getElementById('combo-badge');
+  if (!badge) return;
+  const c = state.combo;
+  if (c < 2) { badge.classList.add('hidden'); return; }
+  badge.classList.remove('hidden', 'hot', 'fire');
+  if (c >= 5)      badge.classList.add('fire');
+  else if (c >= 3) badge.classList.add('hot');
+  badge.textContent = `🔥 ×${c}`;
+}
+
+/* ── Hints ───────────────────────────────────────────────── */
+function useHint(field) {
+  const track = state.tracks[state.round];
+  if (!track || state.submitted) return;
+  const answer = field === 'artist' ? (track.src ?? track.a) : track.t;
+  const input  = document.getElementById(`${field}-input`);
+  if (input && !input.value) input.value = answer.slice(0, 3) + '…';
+  const btn = document.getElementById(`hint-${field}`);
+  if (btn) btn.disabled = true;
+  state.hintsUsed++;
 }
 
 /* ── OpenAI ─────────────────────────────────────────────── */
@@ -1803,6 +1869,12 @@ async function selectTheme(theme) {
 function startRound() {
   state.submitted = false;
 
+  // Reset hint buttons
+  const hintArtist = document.getElementById('hint-artist');
+  const hintTitle  = document.getElementById('hint-title');
+  if (hintArtist) hintArtist.disabled = false;
+  if (hintTitle)  hintTitle.disabled  = false;
+
   // Reset hidden answer inputs (still needed for submitAnswer scoring)
   document.getElementById("artist-input").value = "";
   document.getElementById("title-input").value = "";
@@ -1878,7 +1950,6 @@ function submitAnswer(timedOut = false) {
   state.submitted = true;
 
   stopListening(); // AI mode: stop voice input
-  // On timeout in AI mode: reset mic to idle so user sees it timed out
   if (timedOut && state.mode === "openai") setAIMicState("idle");
   timerStop();
   stopPreview();
@@ -1892,21 +1963,42 @@ function submitAnswer(timedOut = false) {
   const artistOk = isCorrect(artistGuess, track.src ?? track.a);
   const titleOk  = isCorrect(titleGuess,  track.t);
   const bonus    = (artistOk || titleOk) ? timeBonus(elapsed) : 0;
-  const pts      = (artistOk ? 50 : 0) + (titleOk ? 50 : 0) + bonus;
+  const baseRound = (artistOk ? 50 : 0) + (titleOk ? 50 : 0) + bonus;
 
-  state.rounds.push({ artistOk, titleOk, pts, elapsed, track });
+  // Combo streak
+  const anyCorrect = artistOk || titleOk;
+  if (anyCorrect) {
+    state.combo++;
+    state.maxCombo = Math.max(state.maxCombo, state.combo);
+  } else {
+    state.combo = 0;
+  }
+  const comboMult = state.combo >= 5 ? 2.0 : state.combo >= 3 ? 1.5 : 1.0;
+  const pts = Math.round(baseRound * comboMult);
+
+  state.rounds.push({ artistOk, titleOk, pts, elapsed, track, combo: state.combo, comboMult });
   state.score += pts;
   document.getElementById("header-score").textContent = `${state.score} pts`;
+  updateComboBadge();
 
   const dotResult = artistOk && titleOk ? "won" : pts > 0 ? "partial" : "lost";
   updateProgressDot(state.round, dotResult);
 
+  // Sound effects
+  if (timedOut)       sfx('timeout');
+  else if (anyCorrect) {
+    sfx('correct');
+    if (state.combo >= 3) setTimeout(() => sfx('combo'), 220);
+  } else {
+    sfx('wrong');
+  }
+
   robotReact(artistOk || titleOk);
-  showReveal(track, artistOk, titleOk, bonus, pts);
+  showReveal(track, artistOk, titleOk, bonus, pts, comboMult);
 }
 
 /* ── Reveal ─────────────────────────────────────────────── */
-function showReveal(track, artistOk, titleOk, bonus, pts) {
+function showReveal(track, artistOk, titleOk, bonus, pts, comboMult = 1.0) {
   document.getElementById("album-cover").src = track.cover || "";
   document.getElementById("reveal-artist").textContent = track.src ?? track.a;
   document.getElementById("reveal-title").textContent  = track.t;
@@ -1918,6 +2010,19 @@ function showReveal(track, artistOk, titleOk, bonus, pts) {
   document.querySelector(".score-row:first-child .score-row-label").textContent =
     state.theme?.artistLabel ?? "Artist";
   document.getElementById("bonus-pts").textContent  = `+${bonus} pts`;
+
+  // Combo row
+  const comboRow   = document.getElementById("combo-row");
+  const comboPtsEl = document.getElementById("combo-pts");
+  if (comboRow && comboPtsEl) {
+    if (comboMult > 1.0) {
+      comboPtsEl.textContent = `×${comboMult.toFixed(1)} (🔥${state.combo}-streak)`;
+      comboRow.classList.remove("hidden");
+    } else {
+      comboRow.classList.add("hidden");
+    }
+  }
+
   document.getElementById("round-total-pts").textContent = `${pts} pts`;
 
   const nextBtn = document.getElementById("next-btn");
@@ -1942,35 +2047,38 @@ function showReveal(track, artistOk, titleOk, bonus, pts) {
   }
 }
 
-/* ── Leaderboard (Supabase) ──────────────────────────────── */
-async function fetchLeaderboard(themeId) {
-  const rows = await supaFetch('quiz_scores', {
-    theme_id: `eq.${themeId}`,
-    mode:     'eq.solo',
-    order:    'score.desc',
-    limit:    '10',
-    select:   'player_name,score,played_at',
-  });
-  return rows.map(r => ({
-    u: r.player_name,
-    n: r.player_name,
-    s: r.score,
-    d: r.played_at ? r.played_at.slice(0, 10) : '',
-  }));
+/* ── Leaderboard (server-side API) ───────────────────────── */
+async function fetchLeaderboard(themeLabel) {
+  try {
+    const res = await fetch(`/api/leaderboard?theme=${encodeURIComponent(themeLabel || '')}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.map(r => ({
+      u: r.name, n: r.name, s: r.score,
+      d: r.created_at ? r.created_at.slice(0, 10) : '',
+    }));
+  } catch { return []; }
 }
 async function saveScore({ displayName, themeId, themeLabel, score }) {
   if (!themeId || themeId === 'random' || !score) return null;
   try {
-    await supaInsert('quiz_scores', {
-      player_name: displayName || 'Anonymous',
-      theme_id:    themeId,
-      theme_label: themeLabel,
-      score,
-      mode: 'solo',
+    const res = await fetch('/api/scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:  displayName || 'Anonymous',
+        score,
+        theme: themeLabel || themeId,
+        combo: state.maxCombo,
+      }),
     });
+    const json = await res.json();
     const el = document.getElementById('leaderboard-save-status');
-    if (el) { el.textContent = '✓ Saved'; el.className = 'leaderboard-save-status ok'; }
-    return fetchLeaderboard(themeId);
+    if (el) {
+      el.textContent = json.ok ? '✓ Saved' : '⚠ Save failed';
+      el.className   = `leaderboard-save-status ${json.ok ? 'ok' : 'err'}`;
+    }
+    return json.ok ? fetchLeaderboard(themeLabel || themeId) : null;
   } catch (_) {
     const el = document.getElementById('leaderboard-save-status');
     if (el) { el.textContent = '⚠ Save failed'; el.className = 'leaderboard-save-status err'; }
@@ -1980,7 +2088,7 @@ async function saveScore({ displayName, themeId, themeLabel, score }) {
 
 function renderLeaderboard(entries, themeId, currentUsername) {
   const section = document.getElementById("leaderboard-section");
-  const list    = document.getElementById("leaderboard-list");
+  const list    = document.getElementById("game-leaderboard-list");
   const label   = document.getElementById("leaderboard-theme-label");
   if (!section || !list) return;
 
@@ -2039,6 +2147,36 @@ function renderLeaderboard(entries, themeId, currentUsername) {
 /* ── Profile modal removed ─────────────────────────────── */
 async function showProfileModal() {}
 
+/* ── Achievements ────────────────────────────────────────── */
+function computeAchievements() {
+  const list = [];
+  const perfect = state.rounds.filter(r => r.artistOk && r.titleOk).length;
+  const fast    = state.rounds.filter(r => r.elapsed <= 10 && (r.artistOk || r.titleOk)).length;
+  if (perfect === TOTAL_ROUNDS)  list.push({ text: '🏆 Perfect Game!', cls: 'gold' });
+  else if (perfect >= 8)          list.push({ text: `⭐ ${perfect}/10 Perfect`, cls: 'gold' });
+  else if (perfect >= 5)          list.push({ text: `✨ ${perfect} Perfect Rounds`, cls: '' });
+  if (state.maxCombo >= 5)        list.push({ text: `🔥 ${state.maxCombo}× Combo!`, cls: 'gold' });
+  else if (state.maxCombo >= 3)   list.push({ text: `🔥 ${state.maxCombo}× Streak`, cls: '' });
+  if (fast >= 5)                  list.push({ text: `⚡ Speed Demon (${fast})`, cls: 'cyan' });
+  if (state.hintsUsed === 0 && perfect >= 5) list.push({ text: '💡 No Hints Needed', cls: 'cyan' });
+  if (state.score >= 1000)        list.push({ text: '💎 1000+ Points', cls: 'gold' });
+  return list;
+}
+
+/* ── Share score ─────────────────────────────────────────── */
+function shareScore() {
+  const theme = state.theme?.label || 'Music Quiz';
+  const text  = `🎵 I scored ${state.score} pts on AI Music Quiz!\nTheme: ${theme}${state.maxCombo > 1 ? `\nBest combo: ×${state.maxCombo}` : ''}\n${location.origin}`;
+  if (navigator.share) {
+    navigator.share({ title: 'AI Music Quiz', text }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(text).then(() => {
+      const btn = document.getElementById('share-btn');
+      if (btn) { const orig = btn.textContent; btn.textContent = '✅ Copied!'; setTimeout(() => { btn.textContent = orig; }, 2000); }
+    }).catch(() => {});
+  }
+}
+
 /* ── Game over ─────────────────────────────────────────── */
 function showGameOver() {
   const total = state.score;
@@ -2073,6 +2211,37 @@ function showGameOver() {
   }).join("");
 
   showPhase("phase-gameover");
+
+  // Achievements
+  const achievements = computeAchievements();
+  const achSection = document.getElementById("achievements-section");
+  const achList    = document.getElementById("achievements-list");
+  if (achSection && achList && achievements.length) {
+    achList.innerHTML = achievements.map((a, i) =>
+      `<span class="achievement-chip ${a.cls || ''}" style="animation-delay:${i * 0.08}s">${a.text}</span>`
+    ).join("");
+    achSection.classList.remove("hidden");
+  }
+
+  // Stats line
+  const statsLine = document.getElementById("stats-line");
+  if (statsLine) {
+    const parts = [];
+    if (state.maxCombo > 1) parts.push(`Best combo: ×${state.maxCombo}`);
+    if (state.hintsUsed > 0) parts.push(`Hints used: ${state.hintsUsed}`);
+    statsLine.textContent = parts.join("  ·  ");
+  }
+
+  // Wire share + manual submit buttons
+  document.getElementById("share-btn")?.addEventListener("click", shareScore);
+  document.getElementById("submit-score-btn")?.addEventListener("click", () => {
+    const name    = getPlayerName();
+    const themeId = state.theme?.id;
+    if (themeId && themeId !== 'random' && total > 0) {
+      saveScore({ displayName: name, themeId, themeLabel: state.theme?.label, score: total })
+        .then(entries => { if (Array.isArray(entries)) renderLeaderboard(entries, themeId, name); });
+    }
+  });
 
   // AI mode: head wobble + rich spoken summary
   if (state.mode === "openai") {
@@ -2125,24 +2294,23 @@ function showGameOver() {
   const themeId = state.theme?.id;
   if (themeId && themeId !== "random") {
     const section = document.getElementById("leaderboard-section");
-    const list    = document.getElementById("leaderboard-list");
+    const list    = document.getElementById("game-leaderboard-list");
     if (section && list) {
       section.classList.remove("hidden");
       list.innerHTML = `<li class="lb-loading">Loading leaderboard…</li>`;
       document.getElementById("leaderboard-theme-label").textContent =
         `${state.theme.emoji} ${state.theme.label}`;
 
-      const username = getPlayerName();
+      const username    = getPlayerName();
       const displayName = username;
-      const avatarUrl = "";
+      const themeLabel  = state.theme.label;
 
-      // Always show current leaderboard immediately
-      fetchLeaderboard(themeId).then(entries => {
+      // Show current leaderboard immediately, then auto-save and refresh
+      fetchLeaderboard(themeLabel).then(entries => {
         renderLeaderboard(entries, themeId, username);
 
-        // Save via backend if logged in, then refresh with updated data
         if (username && total > 0) {
-          saveScore({ username, displayName, avatarUrl, themeId, themeLabel: state.theme.label, score: total })
+          saveScore({ displayName, themeId, themeLabel, score: total })
             .then(updatedEntries => {
               if (Array.isArray(updatedEntries)) {
                 renderLeaderboard(updatedEntries, themeId, username);
@@ -2205,6 +2373,10 @@ function init() {
   document.getElementById("submit-btn").addEventListener("click", () => submitAnswer());
   document.getElementById("skip-btn").addEventListener("click",   () => submitAnswer(true));
 
+  // Hint buttons (free mode)
+  document.getElementById("hint-artist")?.addEventListener("click", () => useHint("artist"));
+  document.getElementById("hint-title")?.addEventListener("click",  () => useHint("title"));
+
   document.getElementById("next-btn").addEventListener("click", () => {
     state.round++;
     if (state.round >= TOTAL_ROUNDS || state.round >= state.tracks.length) {
@@ -2218,6 +2390,9 @@ function init() {
     state.round = 0;
     state.rounds = [];
     state.score = 0;
+    state.combo = 0;
+    state.maxCombo = 0;
+    state.hintsUsed = 0;
     document.getElementById("header-score").textContent = "0 pts";
     document.getElementById("header-theme").textContent = "Blind Test";
     stopListening();

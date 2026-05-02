@@ -1280,3 +1280,166 @@
   font-size: 12px;
   padding: 8px 0;
 }
+
+/* ══════════════════════════════════════════════
+   Combo badge (header)
+   ══════════════════════════════════════════════ */
+.combo-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  border: 1.5px solid oklch(0.72 0.27 350 / 0.5);
+  background: oklch(0.72 0.27 350 / 0.15);
+  color: var(--neon-pink);
+  text-shadow: 0 0 6px var(--neon-pink);
+  animation: combo-pulse 0.6s ease-out;
+  white-space: nowrap;
+}
+.combo-badge.hot {
+  border-color: oklch(0.75 0.25 45 / 0.7);
+  background: oklch(0.75 0.25 45 / 0.15);
+  color: oklch(0.95 0.22 70);
+  text-shadow: 0 0 8px oklch(0.85 0.22 70);
+}
+.combo-badge.fire {
+  border-color: oklch(0.7 0.28 30 / 0.8);
+  background: oklch(0.7 0.28 30 / 0.2);
+  color: oklch(0.96 0.2 45);
+  text-shadow: 0 0 10px oklch(0.85 0.28 40);
+  animation: combo-pulse 0.6s ease-out, combo-fire 1.5s ease-in-out infinite;
+}
+@keyframes combo-pulse {
+  0%   { transform: scale(1.4); }
+  60%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+@keyframes combo-fire {
+  0%, 100% { box-shadow: 0 0 8px oklch(0.85 0.28 40 / 0.5); }
+  50%       { box-shadow: 0 0 18px oklch(0.85 0.28 40 / 0.9); }
+}
+
+/* ══════════════════════════════════════════════
+   Hint button
+   ══════════════════════════════════════════════ */
+.hint-btn {
+  position: absolute;
+  right: 40px; /* just left of check-icon */
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  font-size: 15px;
+  opacity: 0.5;
+  transition: opacity 0.2s, filter 0.2s;
+  line-height: 1;
+}
+.hint-btn:hover:not(:disabled) { opacity: 0.9; filter: drop-shadow(0 0 4px var(--neon-cyan)); }
+.hint-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+/* shift check-icon right to accommodate hint btn */
+.input-wrap .check-icon { right: 12px; }
+
+/* ══════════════════════════════════════════════
+   Combo row in reveal phase
+   ══════════════════════════════════════════════ */
+.score-row-combo .score-row-pts { color: oklch(0.88 0.22 60); text-shadow: 0 0 6px oklch(0.85 0.22 60 / 0.5); }
+
+/* ══════════════════════════════════════════════
+   Achievements section (game over)
+   ══════════════════════════════════════════════ */
+.achievements-section {
+  width: 100%;
+  margin: 14px 0 4px;
+}
+.achievements-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: oklch(0.98 0.01 320 / 0.8);
+  margin: 0 0 10px;
+  text-align: center;
+}
+.achievements-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.achievement-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1.5px solid oklch(0.72 0.27 350 / 0.35);
+  background: oklch(0.72 0.27 350 / 0.1);
+  color: var(--neon-pink);
+  animation: chip-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.achievement-chip.cyan {
+  border-color: oklch(0.85 0.18 200 / 0.35);
+  background: oklch(0.85 0.18 200 / 0.08);
+  color: var(--neon-cyan);
+}
+.achievement-chip.gold {
+  border-color: oklch(0.82 0.18 80 / 0.5);
+  background: oklch(0.82 0.18 80 / 0.12);
+  color: oklch(0.95 0.2 75);
+}
+@keyframes chip-pop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  80%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+/* ══════════════════════════════════════════════
+   Share + Submit row
+   ══════════════════════════════════════════════ */
+.go-share-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin: 12px 0 4px;
+}
+.go-share-row .btn { flex: 1; }
+.btn-share {
+  background: transparent;
+  border: 1.5px solid oklch(0.72 0.27 350 / 0.45);
+  color: var(--neon-pink);
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  height: 44px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.btn-share:hover {
+  background: oklch(0.72 0.27 350 / 0.1);
+  border-color: var(--neon-pink);
+  transform: translateY(-1px);
+}
+
+/* ══════════════════════════════════════════════
+   Stats line (game over footer)
+   ══════════════════════════════════════════════ */
+.stats-line {
+  font-size: 12px;
+  color: oklch(0.98 0.01 320 / 0.4);
+  text-align: center;
+  margin: 6px 0 0;
+}
+
+/* ══════════════════════════════════════════════
+   In-game leaderboard — small title variant
+   ══════════════════════════════════════════════ */
+.leaderboard-title-small {
+  font-size: 14px;
+  font-weight: 700;
+  color: oklch(0.95 0.05 60);
+  letter-spacing: 0.02em;
+}
+

@@ -19,6 +19,14 @@ const textModel = process.env.OPENAI_TEXT_MODEL || 'gpt-4o-mini';
 const ttsModel = process.env.OPENAI_TTS_MODEL || 'tts-1';
 const ttsVoice = process.env.OPENAI_TTS_VOICE || 'nova';
 
+// ── Supabase (server-side only — key never sent to client) ───────────────────
+const SUPA_URL = process.env.SUPABASE_URL || '';
+const SUPA_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || '';
+
+// ── iTunes preview cache (LRU, max 500 entries) ──────────────────────────────
+const itunesCache = new Map();
+const ITUNES_CACHE_MAX = 500;
+
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -104,6 +112,95 @@ app.post('/api/tts', async (req, res) => {
   } catch (error) {
     console.error('/api/tts', error);
     res.status(500).json({ error: 'Could not generate speech.' });
+  }
+});
+
+// ── iTunes preview search (server-side proxy with LRU cache) ─────────────────
+app.get('/api/preview-search', async (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 120);
+  if (!q) return res.status(400).json({ error: 'q required' });
+
+  // LRU: move to end if exists
+  if (itunesCache.has(q)) {
+    const cached = itunesCache.get(q);
+    itunesCache.delete(q);
+    itunesCache.set(q, cached);
+    return res.json(cached);
+  }
+
+  try {
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=3&country=us`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!r.ok) throw new Error(`iTunes ${r.status}`);
+    const data = await r.json();
+
+    // Prefer exact-ish matches: pick the result whose trackName most closely
+    // matches the second half of the query (the title part).
+    const results = data.results || [];
+    const best = results.find(x => x.previewUrl) || null;
+    const payload = best ? {
+      previewUrl: best.previewUrl,
+      cover: (best.artworkUrl100 || '').replace('100x100bb', '300x300bb'),
+      trackName: best.trackName || '',
+      artistName: best.artistName || '',
+    } : null;
+
+    // Evict oldest if over capacity
+    if (itunesCache.size >= ITUNES_CACHE_MAX) {
+      itunesCache.delete(itunesCache.keys().next().value);
+    }
+    itunesCache.set(q, payload);
+    res.json(payload);
+  } catch (e) {
+    console.error('/api/preview-search', e.message);
+    res.status(502).json({ error: 'iTunes lookup failed' });
+  }
+});
+
+// ── Leaderboard (server-side Supabase — key never sent to browser) ────────────
+async function supaRequest(method, path, body) {
+  if (!SUPA_URL || !SUPA_KEY) return null;
+  const res = await fetch(`${SUPA_URL}/rest/v1${path}`, {
+    method,
+    headers: {
+      apikey: SUPA_KEY,
+      Authorization: `Bearer ${SUPA_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: method === 'POST' ? 'return=minimal' : '',
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+    signal: AbortSignal.timeout(5000),
+  });
+  return res;
+}
+
+app.post('/api/scores', async (req, res) => {
+  const name  = String(req.body?.name  || 'Anonymous').trim().slice(0, 20) || 'Anonymous';
+  const score = Math.min(9999, Math.max(0, Number(req.body?.score)  || 0));
+  const theme = String(req.body?.theme || '').trim().slice(0, 40);
+  const combo = Math.min(10, Math.max(0, Number(req.body?.combo) || 0));
+
+  try {
+    const r = await supaRequest('POST', '/scores', { name, score, theme, combo });
+    res.json({ ok: r?.ok ?? false });
+  } catch (e) {
+    console.error('/api/scores', e.message);
+    res.json({ ok: false });
+  }
+});
+
+app.get('/api/leaderboard', async (req, res) => {
+  const theme = String(req.query.theme || '').trim().slice(0, 40);
+  const filter = theme ? `?theme=eq.${encodeURIComponent(theme)}&order=score.desc&limit=10&select=name,score,theme,created_at`
+                       : '?order=score.desc&limit=10&select=name,score,theme,created_at';
+  try {
+    const r = await supaRequest('GET', `/scores${filter}`);
+    if (!r || !r.ok) return res.json([]);
+    const data = await r.json();
+    res.json(Array.isArray(data) ? data : []);
+  } catch (e) {
+    console.error('/api/leaderboard', e.message);
+    res.json([]);
   }
 });
 

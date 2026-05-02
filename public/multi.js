@@ -1,6 +1,6 @@
 /* =========================================================
    Blind Test — Multiplayer Client
-   ========================================================= */import { supaInsert } from './supabase-client.js';
+   ========================================================= */
 /* ── THEMES (compact set for multiplayer theme picker) ────── */
 const THEMES = [
   { id: 'pop80s',   label: '80s Pop',       emoji: '🎸', tracks: [
@@ -322,28 +322,28 @@ const THEMES = [
   { id: 'random',   label: 'Random Mix',    emoji: '🎲', tracks: null, random: true },
 ];
 
-/* ── Deezer JSONP ────────────────────────────────────────── */
-function deezerSearch(q) {
-  return new Promise((resolve) => {
-    const cb = `_dz${Date.now()}${Math.random().toString(36).slice(2)}`;
-    const script = document.createElement('script');
-    const cleanup = () => { delete window[cb]; script.remove(); };
-    window[cb] = (data) => { cleanup(); resolve(data?.data?.[0] ?? null); };
-    script.onerror = () => { cleanup(); resolve(null); };
-    script.src = `https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=1&output=jsonp&callback=${cb}`;
-    document.head.appendChild(script);
-    setTimeout(() => { cleanup(); resolve(null); }, 6000);
-  });
+/* ── iTunes preview search (direct browser call — works cross-network) ─────── */
+async function itunesSearch(q) {
+  try {
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=3&country=us`;
+    const res  = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const hit  = data.results?.find(r => r.previewUrl) ?? null;
+    if (!hit) return null;
+    return {
+      previewUrl: hit.previewUrl,
+      cover:      (hit.artworkUrl100 || '').replace('100x100bb', '300x300bb'),
+    };
+  } catch { return null; }
 }
 
 async function enrichTracks(rawTracks) {
-  const results = await Promise.all(
-    rawTracks.map(({ a, t }) => deezerSearch(`${a} ${t}`))
-  );
+  const results = await Promise.all(rawTracks.map(({ a, t }) => itunesSearch(`${a} ${t}`)));
   return rawTracks.map((raw, i) => ({
     ...raw,
-    previewUrl: results[i]?.preview ?? null,
-    cover:      results[i]?.album?.cover_medium ?? null,
+    previewUrl: results[i]?.previewUrl ?? null,
+    cover:      results[i]?.cover ?? null,
   })).filter(tr => tr.previewUrl);
 }
 
@@ -378,49 +378,59 @@ const supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 // Prime permission and check Speech API availability early so
 // the browser doesn't block recognition mid-round.
 async function primeMic() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const micBtn = document.getElementById('mp-mic-btn');
-  const noSupport = document.getElementById('mp-mic-no-support');
-
-  if (!SR) {
-    if (micBtn)    micBtn.style.display = 'none';
-    if (noSupport) noSupport.style.display = 'block';
-    return;
-  }
-  // On iOS Safari getUserMedia is required first to unlock AudioSession
-  // for both audio playback AND SpeechRecognition simultaneously.
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    // Keep the stream alive — stopping it revokes mic and breaks recognition on iOS.
-    window._micStream = stream;
-  } catch (e) {
-    console.warn('Mic permission denied:', e);
-    if (micBtn)    micBtn.style.display = 'none';
-    if (noSupport) { noSupport.textContent = '🎤 Mic access denied — type your answers'; noSupport.style.display = 'block'; }
-  }
+  // SpeechRecognition is started automatically per-round via startMicAnswer().
+  // No pre-permission needed; browser prompts on first rec.start().
 }
 
 /* ── Speech Recognition ──────────────────────────────────── */
 let _recognition = null;
+let _mpArtistFound = false;
+let _mpTitleFound  = false;
+
+function resetVoiceChips() {
+  _mpArtistFound = false;
+  _mpTitleFound  = false;
+  const ac = document.getElementById('mp-artist-chip');
+  const tc = document.getElementById('mp-title-chip');
+  if (ac) { ac.textContent = '🎤 Artist'; ac.classList.remove('found'); }
+  if (tc) { tc.textContent = '🎤 Title';  tc.classList.remove('found'); }
+}
+
+function updateVoiceChips() {
+  const ac = document.getElementById('mp-artist-chip');
+  const tc = document.getElementById('mp-title-chip');
+  if (ac) { ac.textContent = _mpArtistFound ? '✅ Artist' : '🎤 Artist'; ac.classList.toggle('found', _mpArtistFound); }
+  if (tc) { tc.textContent = _mpTitleFound  ? '✅ Title'  : '🎤 Title';  tc.classList.toggle('found', _mpTitleFound); }
+}
+
+function showMicCenter(show) {
+  const mc  = document.getElementById('mp-mic-center');
+  const num = document.getElementById('mp-timer-num');
+  const vc  = document.getElementById('mp-voice-chips');
+  if (mc)  mc.classList.toggle('hidden', !show);
+  if (num) num.style.display = show ? 'none' : '';
+  if (vc)  vc.classList.toggle('hidden', !show);
+}
 
 function startMicAnswer() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR || mp.submitted) return;
+  const noSupport = document.getElementById('mp-mic-no-support');
+  if (!SR) {
+    if (noSupport) noSupport.style.display = 'block';
+    return;
+  }
   stopMicAnswer();
+  if (mp.submitted) return;
 
   const rec = new SR();
-  rec.lang           = 'en-US';
-  rec.interimResults = true;
-  rec.continuous     = false;
+  rec.lang            = 'en-US';
+  rec.interimResults  = true;
+  rec.continuous      = true;
   rec.maxAlternatives = 1;
 
-  const micBtn   = document.getElementById('mp-mic-btn');
-  const micIcon  = document.getElementById('mp-mic-icon');
-  const micLabel = document.getElementById('mp-mic-label');
-
-  if (micBtn)   micBtn.classList.add('listening');
-  if (micIcon)  micIcon.textContent = '🔴';
-  if (micLabel) micLabel.textContent = 'Listening…';
+  const micBtn = document.getElementById('mp-mic-center-btn');
+  if (micBtn) micBtn.classList.add('listening');
+  showMicCenter(true);
 
   rec.onresult = (e) => {
     let interim = '', final = '';
@@ -431,76 +441,68 @@ function startMicAnswer() {
     }
     const heard = (final || interim).trim();
     if (heard) parseVoiceAnswer(heard);
-    if (final) {
+    if (final && _mpArtistFound && _mpTitleFound) {
       stopMicAnswer();
       autoSubmitAfterVoice();
     }
   };
 
   rec.onerror = (e) => {
-    if (e.error === 'no-speech' || e.error === 'aborted') { stopMicAnswer(); return; }
+    if (e.error === 'no-speech' || e.error === 'aborted') return;
+    if (e.error === 'not-allowed') {
+      stopMicAnswer();
+      if (noSupport) { noSupport.textContent = '🚫 Allow mic in browser settings'; noSupport.style.display = 'block'; }
+      return;
+    }
     console.warn('STT error:', e.error);
-    stopMicAnswer();
-    if (micBtn)   micBtn.classList.add('wrong');
-    if (micLabel) micLabel.textContent = 'Try again';
-    setTimeout(() => resetMicBtn(), 1500);
   };
 
-  rec.onend = () => { stopMicAnswer(); };
+  rec.onend = () => {
+    // Auto-restart unless submitted or stopped intentionally
+    if (_recognition === rec && !mp.submitted) {
+      try { rec.start(); } catch (_) {}
+    }
+  };
 
   _recognition = rec;
-  try {
-    rec.start();
-  } catch (e) {
-    console.warn('STT start failed:', e);
-    stopMicAnswer();
-  }
-
-  // iOS: audio may pause when mic activates — auto-resume
-  const mpAudio = document.getElementById('mp-audio');
-  if (mpAudio) {
-    mpAudio.addEventListener('pause', function onPause() {
-      if (_recognition && !mp.submitted) {
-        setTimeout(() => { if (mpAudio.paused && !mp.submitted) mpAudio.play().catch(() => {}); }, 300);
-      } else {
-        mpAudio.removeEventListener('pause', onPause);
-      }
-    });
-  }
+  try { rec.start(); } catch (e) { console.warn('STT start failed:', e); stopMicAnswer(); }
 }
 
 function stopMicAnswer() {
-  if (_recognition) {
-    try { _recognition.stop(); } catch (_) {}
-    _recognition = null;
+  const prev = _recognition;
+  _recognition = null; // clear first so onend doesn't restart
+  if (prev) {
+    try { prev.stop(); } catch (_) {}
   }
-  resetMicBtn();
+  const micBtn = document.getElementById('mp-mic-center-btn');
+  if (micBtn) micBtn.classList.remove('listening', 'wrong');
+  showMicCenter(false);
 }
 
-function resetMicBtn() {
-  const micBtn   = document.getElementById('mp-mic-btn');
-  const micIcon  = document.getElementById('mp-mic-icon');
-  const micLabel = document.getElementById('mp-mic-label');
-  if (micBtn)   { micBtn.classList.remove('listening', 'wrong'); }
-  if (micIcon)  micIcon.textContent = '🎤';
-  if (micLabel) micLabel.textContent = 'Speak Answer';
-}
-
-// Parse "Artist by Title" / "Title by Artist" / freeform into fields
+// Parse voice transcript into artist/title fields and update chips
 function parseVoiceAnswer(transcript) {
   const t = transcript.trim();
   const artistInput = document.getElementById('mp-artist-input');
   const titleInput  = document.getElementById('mp-title-input');
-  // Look for "X by Y" pattern
   const byMatch = t.match(/^(.+?)\s+by\s+(.+)$/i);
   if (byMatch) {
-    // Could be "Title by Artist" or "Artist by Title" — fill both fields
     titleInput.value  = byMatch[1].trim();
     artistInput.value = byMatch[2].trim();
+    _mpTitleFound  = true;
+    _mpArtistFound = true;
   } else {
-    // Just put everything in title field; user might already have artist typed
-    titleInput.value = t;
+    // Fill whichever field isn't found yet
+    if (!_mpArtistFound && !_mpTitleFound) {
+      titleInput.value = t; // default to title first
+    } else if (_mpArtistFound && !_mpTitleFound) {
+      titleInput.value = t;
+      _mpTitleFound = true;
+    } else if (!_mpArtistFound && _mpTitleFound) {
+      artistInput.value = t;
+      _mpArtistFound = true;
+    }
   }
+  updateVoiceChips();
 }
 
 function autoSubmitAfterVoice() {
@@ -510,12 +512,6 @@ function autoSubmitAfterVoice() {
   if (artist || title) submitAnswer();
 }
 
-
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let c = '';
-  for (let i = 0; i < 4; i++) c += chars[Math.floor(Math.random() * chars.length)];
-  return c;
-}
 
 /* ── Fuzzy answer matching (mirrors server.js) ───────────── */
 function norm(s) {
@@ -545,6 +541,14 @@ function answerOk(guess, answer) {
 }
 function speedBonus(elapsed) {
   return elapsed <= 10 ? 20 : elapsed <= 20 ? 10 : elapsed <= 25 ? 5 : 0;
+}
+
+/* ── Room code generator ─────────────────────────────────── */
+function genRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
 }
 
 /* ── Host-side room state ────────────────────────────────── */
@@ -1062,13 +1066,12 @@ function onRoundStart({ round, total, previewUrl, startedAt }) {
   document.getElementById('mp-replay-banner').style.display = 'none';
   document.getElementById('mp-round-label').textContent = `Round ${round} / ${total}`;
   document.getElementById('mp-skip-btn').style.display = mp.isHost ? 'block' : 'none';
-  const micBtn = document.getElementById('mp-mic-btn');
-  if (micBtn) micBtn.disabled = false;
-  resetMicBtn();
+  resetVoiceChips();
   timerStart(startedAt);
   playPreview(previewUrl);
   renderLiveScores(mp.players.map(p => ({ ...p })), new Set());
   showPhase('phase-playing');
+  startMicAnswer();
 }
 
 function onReplayMusic({ previewUrl, startedAt }) {
@@ -1083,14 +1086,13 @@ function onReplayMusic({ previewUrl, startedAt }) {
   document.getElementById('mp-answered-banner').style.display = 'none';
   const replayBanner = document.getElementById('mp-replay-banner');
   if (replayBanner) { replayBanner.style.display = 'block'; }
-  const micBtn = document.getElementById('mp-mic-btn');
-  if (micBtn) micBtn.disabled = false;
-  resetMicBtn();
+  resetVoiceChips();
   stopMicAnswer();
   timerStart(startedAt);
   playPreview(previewUrl);
   // Hide replay banner after 3s
   setTimeout(() => { if (replayBanner) replayBanner.style.display = 'none'; }, 3000);
+  startMicAnswer();
 }
 
 function onAnswerResult({ forId, artistOk, titleOk, pts }) {
@@ -1098,8 +1100,6 @@ function onAnswerResult({ forId, artistOk, titleOk, pts }) {
   mp.myResult  = { artistOk, titleOk, pts };
   mp.submitted = true;
   stopMicAnswer();
-  const micBtn = document.getElementById('mp-mic-btn');
-  if (micBtn) micBtn.disabled = true;
   document.getElementById('mp-artist-check').textContent = artistOk ? '✅' : '❌';
   document.getElementById('mp-title-check').textContent  = titleOk  ? '✅' : '❌';
   document.getElementById('mp-answer-area').style.display = 'none';
@@ -1157,13 +1157,16 @@ function onGameEnd({ scores }) {
   showPhase('phase-gameover');
   const myName  = mp.myName || localStorage.getItem('quiz-player-name') || 'Anonymous';
   const myEntry = scores.find(p => p.name === myName);
-  if (myEntry && myEntry.score > 0 && mp.theme?.id) {
-    supaInsert('quiz_scores', {
-      player_name: myName,
-      theme_id:    mp.theme.id,
-      theme_label: mp.theme.label || 'Multiplayer',
-      score:       myEntry.score,
-      mode:        'multi',
+  if (myEntry && myEntry.score > 0) {
+    fetch('/api/scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:  myName,
+        score: myEntry.score,
+        theme: mp.theme?.label || 'Multiplayer',
+        combo: 0,
+      }),
     }).catch(() => {});
   }
 }
@@ -1318,11 +1321,21 @@ document.getElementById('start-game-btn').addEventListener('click', () => {
   setTimeout(() => hostStartRound(), 2000);
 });
 
-// Mic button
-document.getElementById('mp-mic-btn').addEventListener('click', () => {
+// Mic button — tap to manually re-start listening if needed
+document.getElementById('mp-mic-center-btn')?.addEventListener('click', () => {
   if (_recognition) { stopMicAnswer(); return; }
   startMicAnswer();
 });
+
+// Leave button — also exposed as window.mpLeaveRoom for lobby phase button
+function mpLeaveRoom() {
+  stopMicAnswer();
+  if (mp.channel) { try { mp.channel.unsubscribe(); } catch (_) {} }
+  window.location.href = 'index.html';
+}
+window.mpLeaveRoom = mpLeaveRoom;
+
+document.getElementById('mp-leave-btn')?.addEventListener('click', mpLeaveRoom);
 
 // Submit answer
 document.getElementById('mp-submit-btn').addEventListener('click', submitAnswer);

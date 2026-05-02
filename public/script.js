@@ -44,4 +44,40 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeHowto();
   });
+
+  // ── Home leaderboard ───────────────────────────────────
+  (async () => {
+    const list = document.getElementById("leaderboard-list");
+    if (!list) return;
+    try {
+      const res  = await fetch("/api/leaderboard");
+      const data = res.ok ? await res.json() : [];
+      if (!data.length) {
+        list.innerHTML = '<div class="leaderboard-loading">No scores yet — be the first!</div>';
+        return;
+      }
+      const medals = ["🥇", "🥈", "🥉"];
+      list.innerHTML = data.map((r, i) => {
+        const rankCls = i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "";
+        return `<div class="lb-row">
+          <span class="lb-rank ${rankCls}">${medals[i] ?? i + 1}</span>
+          <div class="lb-info">
+            <span class="lb-name">${escHtml(r.name)}</span>
+            <span class="lb-theme">${escHtml(r.theme || '')}</span>
+          </div>
+          <span class="lb-score">${r.score} pts</span>
+        </div>`;
+      }).join("");
+    } catch (_) {
+      list.innerHTML = '<div class="leaderboard-loading">Leaderboard unavailable</div>';
+    }
+  })();
+
+  function escHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 })();

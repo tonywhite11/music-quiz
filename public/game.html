@@ -28,6 +28,7 @@
         <span id="header-theme" class="header-theme">Blind Test</span>
         <div class="header-right">
           <span id="header-score" class="header-score">0 pts</span>
+          <div id="combo-badge" class="combo-badge hidden" aria-live="polite"></div>
           <span class="host-badge">🎧 AI DJ</span>
           <button id="help-btn" class="help-btn" title="How to score" aria-label="Scoring help">?</button>
         </div>
@@ -64,10 +65,20 @@
               <span class="help-score-label">Answer in under 25s</span>
               <span class="help-score-val">+5 pts</span>
             </div>
+            <div class="help-score-item">
+              <span class="help-score-emoji">🔥</span>
+              <span class="help-score-label">3-streak combo</span>
+              <span class="help-score-val">×1.5</span>
+            </div>
+            <div class="help-score-item">
+              <span class="help-score-emoji">💥</span>
+              <span class="help-score-label">5-streak combo</span>
+              <span class="help-score-val">×2.0</span>
+            </div>
             <div class="help-score-item help-score-item--max">
               <span class="help-score-emoji">🏆</span>
               <span class="help-score-label">Max per round</span>
-              <span class="help-score-val">120 pts</span>
+              <span class="help-score-val">120+ pts</span>
             </div>
           </div>
           <p class="help-tip">💡 Tip: Fuzzy spelling counts — close enough is good enough!</p>
@@ -187,6 +198,7 @@
                 <input id="artist-input" type="text" class="answer-input"
                   placeholder="Who?" autocomplete="off" spellcheck="false" />
                 <span id="artist-check" class="check-icon" aria-hidden="true"></span>
+                <button type="button" id="hint-artist" class="hint-btn" title="Reveal first letters">💡</button>
               </div>
             </div>
             <div class="input-group">
@@ -195,6 +207,7 @@
                 <input id="title-input" type="text" class="answer-input"
                   placeholder="What song?" autocomplete="off" spellcheck="false" />
                 <span id="title-check" class="check-icon" aria-hidden="true"></span>
+                <button type="button" id="hint-title" class="hint-btn" title="Reveal first letters">💡</button>
               </div>
             </div>
             <button id="submit-btn" class="btn btn-pink submit-btn">&#10003;&nbsp; Submit</button>
@@ -238,6 +251,11 @@
               <span class="score-row-label">Speed bonus</span>
               <span id="bonus-pts" class="score-row-pts">+0 pts</span>
             </div>
+            <div id="combo-row" class="score-row score-row-combo hidden">
+              <span class="result-icon">🔥</span>
+              <span class="score-row-label">Combo multiplier</span>
+              <span id="combo-pts" class="score-row-pts">×1.0</span>
+            </div>
           </div>
 
           <div class="round-total">
@@ -265,13 +283,25 @@
 
           <div id="badge-area" class="badge-area"></div>
 
+          <!-- Achievements -->
+          <div id="achievements-section" class="achievements-section hidden">
+            <h3 class="achievements-heading">✨ Achievements</h3>
+            <div id="achievements-list" class="achievements-list"></div>
+          </div>
+
+          <!-- Share + Submit -->
+          <div class="go-share-row">
+            <button id="share-btn" class="btn btn-share" type="button">📤 Share Score</button>
+            <button id="submit-score-btn" class="btn btn-cyan btn-small" type="button">🏆 Submit</button>
+          </div>
+
           <!-- Leaderboard -->
           <div id="leaderboard-section" class="leaderboard-section hidden">
             <div class="leaderboard-header">
-              <span class="leaderboard-title">🏆 <span id="leaderboard-theme-label">Theme</span> Leaderboard</span>
+              <span class="leaderboard-title-small">🏆 <span id="leaderboard-theme-label">Theme</span> Leaderboard</span>
               <span id="leaderboard-save-status" class="leaderboard-save-status"></span>
             </div>
-            <ol id="leaderboard-list" class="leaderboard-list"></ol>
+            <ol id="game-leaderboard-list" class="leaderboard-list"></ol>
           </div>
 
           <div id="rounds-recap" class="rounds-recap"></div>
@@ -280,6 +310,8 @@
             <button id="play-again-btn" class="btn btn-pink">&#9654;&nbsp; Play Again</button>
             <a href="index.html" class="btn btn-cyan">Home</a>
           </div>
+          <!-- max combo & hints used info -->
+          <p id="stats-line" class="stats-line"></p>
         </div>
       </section>
 
