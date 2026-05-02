@@ -1206,6 +1206,56 @@ const THEMES = [
   { id: "random",    label: "Random Mix",        emoji: "🎲", bpm: 110, tracks: null, random: true },
 ];
 
+/* ── Dynamic theme search terms ─────────────────────────────
+   fetchThemeTracks() picks 4 random terms, queries iTunes
+   limit=50 each, pools ~200 candidates, returns 20 shuffled
+   tracks that have a preview URL — different every game.
+────────────────────────────────────────────────────────────── */
+const THEME_SEARCH_TERMS = {
+  pop80s:          ['Michael Jackson','Madonna','Prince','Cyndi Lauper','Whitney Houston','George Michael','Duran Duran','Bon Jovi','Tina Turner','Phil Collins','Lionel Richie','Rick Springfield'],
+  rnb90s:          ['TLC','Aaliyah','Mary J Blige','Boyz II Men','Mariah Carey',"Destiny's Child",'Usher','En Vogue','SWV','Blackstreet','Janet Jackson','Brian McKnight'],
+  disney:          ['Disney Princess','Lion King soundtrack','Frozen Disney','Little Mermaid Disney','Aladdin Disney','Beauty Beast Disney','Encanto soundtrack','Moana Disney','Tangled Disney','Brave Disney','Pocahontas Disney','Mulan Disney'],
+  kpop:            ['BTS kpop','BLACKPINK','EXO kpop','TWICE kpop','Stray Kids','aespa kpop','Red Velvet kpop','NCT 127','IU kpop','G-Dragon','SHINee','Super Junior'],
+  frenchpop:       ['Stromae','Edith Piaf','Daft Punk','Christine and the Queens','Indochine','Serge Gainsbourg','Charles Aznavour','Jacques Brel','Aya Nakamura','Angele','France Gall','Camille'],
+  rock:            ['AC DC','Led Zeppelin','Rolling Stones','Guns N Roses','Aerosmith','U2','The Police','Bruce Springsteen','Dire Straits','ZZ Top','Tom Petty','Creedence Clearwater Revival'],
+  reggaeton:       ['Bad Bunny','J Balvin','Daddy Yankee','Ozuna','Maluma','Nicky Jam','Anuel AA','Karol G','Lunay','Sech','Jhay Cortez','Rauw Alejandro'],
+  metal:           ['Metallica','Iron Maiden','Black Sabbath','Slayer','Pantera','Megadeth','Judas Priest','Motorhead','Ozzy Osbourne','System of a Down','Slipknot','Dio'],
+  anime:           ['Naruto soundtrack','Dragon Ball Z OST','Attack on Titan OST','One Piece opening','My Hero Academia OST','Sword Art Online OST','Death Note OST','Fullmetal Alchemist OST','Evangelion OST','Demon Slayer OST','Hunter x Hunter OST','Cowboy Bebop OST'],
+  jazz:            ['Miles Davis','John Coltrane','Thelonious Monk','Billie Holiday','Louis Armstrong','Ella Fitzgerald','Duke Ellington','Charlie Parker','Bill Evans','Dave Brubeck','Chet Baker','Herbie Hancock'],
+  videogames:      ['Mario Nintendo soundtrack','Zelda Nintendo','Final Fantasy OST','Halo OST','Pokemon soundtrack','Sonic video game','Metal Gear OST','Kingdom Hearts OST','Undertale OST','Skyrim OST','Chrono Trigger OST','Doom game OST'],
+  films:           ['Hans Zimmer','John Williams film','Ennio Morricone','James Bond theme','Rocky soundtrack','Star Wars OST','Indiana Jones OST','Dark Knight OST','Inception OST','Interstellar OST','Pulp Fiction soundtrack','Top Gun soundtrack'],
+  soul:            ['Aretha Franklin','Otis Redding','Sam Cooke','Marvin Gaye','Stevie Wonder','Al Green','James Brown','Ray Charles','Wilson Pickett','Bill Withers','Smokey Robinson','Curtis Mayfield'],
+  edm:             ['Daft Punk','Calvin Harris','Avicii','Martin Garrix','David Guetta','Skrillex','Deadmau5','Tiesto','Marshmello','Zedd','Kygo','Swedish House Mafia'],
+  latin:           ['Shakira','Marc Anthony','Jennifer Lopez','Ricky Martin','Enrique Iglesias','Bad Bunny','Juan Gabriel','Carlos Vives','Luis Miguel','Gloria Estefan','Selena','Pitbull'],
+  pop2000s:        ['Britney Spears','NSYNC','Backstreet Boys','Christina Aguilera','Justin Timberlake','Beyonce','Nelly Furtado','Kelly Clarkson','Pink','Alicia Keys','Rihanna','Amy Winehouse'],
+  hiphop:          ['Jay-Z','Nas','Notorious BIG','Tupac','Eminem','Outkast','Kanye West','Kendrick Lamar','Drake','Lil Wayne','Common','Mos Def'],
+  disco:           ['ABBA','Bee Gees','Donna Summer','Gloria Gaynor','Chic','Earth Wind Fire','KC Sunshine Band','Diana Ross','Village People','Sister Sledge','Rick James','Sylvester'],
+  grunge:          ['Nirvana','Pearl Jam','Soundgarden','Alice in Chains','Stone Temple Pilots','Smashing Pumpkins','Bush','Foo Fighters','Weezer','Beck','Pixies','Mudhoney'],
+  newwave:         ['Talking Heads','The Cure','Depeche Mode','New Order','Joy Division','The Smiths','Blondie','Devo','Siouxsie Banshees','Echo Bunnymen','Elvis Costello','Gary Numan'],
+  pop2020s:        ['Olivia Rodrigo','Billie Eilish','Dua Lipa','Harry Styles','Doja Cat','SZA','Taylor Swift','Ariana Grande','The Weeknd','Post Malone','Lizzo','Lil Nas X'],
+  afrobeats:       ['Burna Boy','Wizkid','Davido','Tiwa Savage','Mr Eazi','Rema','Tems','Ayra Starr','Asake','CKay','Fireboy DML','Omah Lay'],
+  classical:       ['Beethoven','Mozart','Bach','Chopin','Vivaldi','Schubert','Brahms','Tchaikovsky','Debussy','Ravel','Liszt','Handel'],
+  indie:           ['Bon Iver','Fleet Foxes','The Shins','Sufjan Stevens','Arcade Fire','Mumford Sons','The Lumineers','Of Monsters Men','Neutral Milk Hotel','Bright Eyes','Elliott Smith','Nick Drake'],
+  country:         ['Johnny Cash','Dolly Parton','Willie Nelson','Garth Brooks','Shania Twain','Kenny Rogers','George Strait','Tim McGraw','Brad Paisley','Carrie Underwood','Miranda Lambert','Hank Williams'],
+  christmas:       ['Mariah Carey Christmas','Frank Sinatra Christmas','Bing Crosby Christmas','Elvis Christmas','Nat King Cole Christmas','Michael Buble Christmas','Dean Martin Christmas','Wham Last Christmas','Brenda Lee Christmas','Jose Feliciano','Eartha Kitt Santa Baby','Christmas classics'],
+  bollywood:       ['Arijit Singh','Shreya Ghoshal','Lata Mangeshkar','Mohammad Rafi','Kishore Kumar','Udit Narayan','Sonu Nigam','Sunidhi Chauhan','AR Rahman','Pritam','Amit Trivedi','Vishal Shekhar'],
+  bossa:           ['Joao Gilberto','Astrud Gilberto','Antonio Carlos Jobim','Stan Getz bossa','Elis Regina','Caetano Veloso','Gilberto Gil','Milton Nascimento','Gal Costa','Chico Buarque','Nara Leao','Joyce Moreno'],
+  punk:            ['The Clash','Sex Pistols','The Ramones','Bad Religion','NOFX','The Offspring','Green Day','Rancid','Dead Kennedys','Black Flag','Social Distortion','The Misfits'],
+  rnb2000s:        ['Usher','Beyonce','Alicia Keys','Rihanna','Ne-Yo','Chris Brown','Ciara','Mario','Omarion','Amerie','Keyshia Cole','Trey Songz'],
+  hiphop2000s:     ['Eminem','Jay-Z','Kanye West','50 Cent','Outkast','Missy Elliott','Lil Wayne','TI rapper','Nelly','Ludacris','DMX','Busta Rhymes'],
+  current:         ['Sabrina Carpenter','Chappell Roan','Kendrick Lamar','Billie Eilish','Charli XCX','Taylor Swift','Ariana Grande','Post Malone','SZA','Doja Cat','Olivia Rodrigo','Bad Bunny'],
+  kids:            ['Kidz Bop','Baby Shark','Wheels Bus kids','Disney children songs','Wiggles','Raffi','CoComelon songs','Barney songs','Mother Goose','Sesame Street','Pinkfong','Super Simple Songs'],
+  neosoul:         ['Erykah Badu',"D'Angelo",'Lauryn Hill','Maxwell','India Arie','Musiq Soulchild','Jill Scott','John Legend','Frank Ocean','Amy Winehouse','HER singer','Daniel Caesar'],
+  funk:            ['James Brown','Parliament Funkadelic','George Clinton','Kool Gang','Earth Wind Fire','Chic','Rick James','Prince funk','Cameo','Tower of Power','Ohio Players','Bootsy Collins'],
+  blues:           ['BB King','Muddy Waters','John Lee Hooker','Howlin Wolf','Stevie Ray Vaughan','Eric Clapton blues','Buddy Guy','Gary Moore blues','Etta James','Albert King','Robert Cray','Keb Mo'],
+  musicals:        ['Hamilton musical','Les Miserables musical','Wicked musical','Grease soundtrack','Mamma Mia musical','Phantom Opera','Chicago musical','Rent musical','West Side Story','Greatest Showman','La La Land','Dear Evan Hansen'],
+  tvthemes_classic:['Batman TV theme','Mission Impossible theme','Peter Gunn Henry Mancini','Hill Street Blues theme','Miami Vice theme','Knight Rider theme','Andy Griffith theme','Addams Family theme','Cheers theme','Magnum PI theme','A-Team theme','Gilligan Island theme'],
+  tvthemes_modern: ['Friends TV Rembrandts','X-Files theme','Game of Thrones theme','Seinfeld theme','Simpsons theme','Fresh Prince theme','Twin Peaks theme','Westworld theme','Fargo theme','Mandalorian theme','True Blood theme','Arrow theme'],
+  '70s':           ['ABBA','Fleetwood Mac','Led Zeppelin','Eagles Hotel California','Queen','David Bowie','Elton John 70s','Pink Floyd','Rolling Stones 70s','Rod Stewart','Bee Gees','Donna Summer'],
+  workout:         ['ACDC Thunderstruck','Survivor Eye Tiger','Eminem Till Collapse','Kanye Stronger','Daft Punk Harder','Prodigy Firestarter','Rage Against Machine','Martin Garrix Animals','Skrillex','Avicii Levels','Linkin Park','Chemical Brothers'],
+  lofi:            ['Nujabes','J Dilla','Kaytranada','BadBadNotGood','Toro y Moi','Mac DeMarco','Tycho','Bonobo','Khruangbin','Four Tet','Mild High Club','Men I Trust'],
+};
+
 /* ── Visual animation note ───────────────────────────────── */
 // Robot dance datasets removed. The standalone version uses CSS/body classes
 // and the canvas visualizer instead of physical robot motion.
@@ -1279,6 +1329,40 @@ async function enrichTracks(rawTracks) {
     previewUrl: results[i]?.previewUrl ?? null,
     cover:      results[i]?.cover      ?? null,
   })).filter(tr => tr.previewUrl);
+}
+
+/* ── Dynamic iTunes track fetcher ───────────────────────────
+   Picks 4 random search terms for the genre, fetches iTunes
+   (limit=50 each) → pools ~200 unique candidates → returns
+   `count` shuffled tracks already containing previewUrl+cover.
+   Returns null on failure so caller can fall back to enrichTracks.
+────────────────────────────────────────────────────────────── */
+async function fetchThemeTracks(theme, count = 20) {
+  const terms = THEME_SEARCH_TERMS[theme.id];
+  if (!terms) return null;
+  const picked = shuffle([...terms]).slice(0, 4);
+  const allResults = await Promise.all(picked.map(async term => {
+    try {
+      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=song&limit=50&country=us`;
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.results || [];
+    } catch { return []; }
+  }));
+  const seen = new Set();
+  const pool = allResults.flat().filter(r => {
+    if (!r.previewUrl || !r.trackId || seen.has(r.trackId)) return false;
+    seen.add(r.trackId);
+    return true;
+  });
+  if (pool.length < 8) return null;
+  return shuffle(pool).slice(0, count).map(r => ({
+    a: r.artistName,
+    t: r.trackName,
+    previewUrl: r.previewUrl,
+    cover: (r.artworkUrl100 || '').replace('100x100bb', '300x300bb'),
+  }));
 }
 
 /* ── Sound effects (Web Audio API) ─────────────────────── */
@@ -2028,22 +2112,28 @@ async function selectTheme(theme) {
   if (state.mode === "openai") speak(`${theme.label}! Let's go!`); // fire-and-forget, plays during loading
 
   try {
-    let rawTracks;
-    if (theme.random) {
-      // Pick 1 random track from each non-random theme, then shuffle
-      const pool = THEMES
-        .filter(t => !t.random && t.tracks)
-        .map(t => t.tracks[Math.floor(Math.random() * t.tracks.length)]);
-      rawTracks = shuffle(pool);
-    } else if (theme.custom && state.mode === "openai") {
-      rawTracks = await generateTracksAI(theme.label);
+    let enriched;
+    if (theme.custom && state.mode === "openai") {
+      // OpenAI mode: GPT generates the track list, then we look each one up
+      const rawTracks = await generateTracksAI(theme.label);
+      enriched = await enrichTracks(rawTracks.slice(0, Math.min(rawTracks.length, 40)));
     } else {
-      rawTracks = shuffle([...theme.tracks]);
+      // Dynamic iTunes fetch first — fresh random pool every game
+      enriched = await fetchThemeTracks(theme, 25);
+      if (!enriched || enriched.length < 8) {
+        // Fallback: hardcoded list + server-proxy enrichment
+        let rawTracks;
+        if (theme.random) {
+          const pool = THEMES
+            .filter(t => !t.random && t.tracks)
+            .map(t => t.tracks[Math.floor(Math.random() * t.tracks.length)]);
+          rawTracks = shuffle(pool);
+        } else {
+          rawTracks = shuffle([...theme.tracks]);
+        }
+        enriched = await enrichTracks(rawTracks.slice(0, Math.min(rawTracks.length, 40)));
+      }
     }
-    // Try up to 40 tracks in parallel to maximise the enriched pool.
-    // After Deezer filters (only tracks with preview URLs survive), shuffle
-    // the enriched pool so every game picks a different random subset.
-    const enriched = await enrichTracks(rawTracks.slice(0, Math.min(rawTracks.length, 40)));
     if (enriched.length < 3) {
       alert("Couldn't load enough tracks. Try another theme.");
       showPhase("phase-theme");
