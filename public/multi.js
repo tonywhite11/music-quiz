@@ -775,8 +775,7 @@ function startMicAnswer() {
   rec.continuous      = true;
   rec.maxAlternatives = 1;
 
-  const micBtn = document.getElementById('mp-mic-center-btn');
-  if (micBtn) micBtn.classList.add('listening');
+  setMpMicState('listening');
   showMicCenter(true);
 
   rec.onresult = (e) => {
@@ -787,7 +786,7 @@ function startMicAnswer() {
       else                      interim += t;
     }
     const heard = (final || interim).trim();
-    if (heard) parseVoiceAnswer(heard);
+    if (heard) onMicSpeech(heard);
     if (final && _mpArtistFound && _mpTitleFound) {
       stopMicAnswer();
       autoSubmitAfterVoice();
@@ -821,35 +820,76 @@ function stopMicAnswer() {
   if (prev) {
     try { prev.stop(); } catch (_) {}
   }
-  const micBtn = document.getElementById('mp-mic-center-btn');
-  if (micBtn) micBtn.classList.remove('listening', 'wrong');
   showMicCenter(false);
 }
 
-// Parse voice transcript into artist/title fields and update chips
-function parseVoiceAnswer(transcript) {
-  const t = transcript.trim();
-  const artistInput = document.getElementById('mp-artist-input');
-  const titleInput  = document.getElementById('mp-title-input');
-  const byMatch = t.match(/^(.+?)\s+by\s+(.+)$/i);
-  if (byMatch) {
-    titleInput.value  = byMatch[1].trim();
-    artistInput.value = byMatch[2].trim();
-    _mpTitleFound  = true;
-    _mpArtistFound = true;
+/* ── Mic circle state machine (mirrors setAIMicState in game.js) ─────── */
+function setMpMicState(s) {
+  const btn   = document.getElementById('mp-mic-center-btn');
+  const label = document.getElementById('mp-mic-center-label');
+  if (!btn) return;
+  btn.classList.remove('listening', 'correct', 'wrong');
+  if (s === 'listening') {
+    btn.classList.add('listening');
+    if (label) label.textContent = 'LISTENING…';
+  } else if (s === 'correct') {
+    btn.classList.add('correct');
+    if (label) label.textContent = 'Got it! ✅';
+  } else if (s === 'wrong') {
+    btn.classList.add('wrong');
+    if (label) label.textContent = 'Try again…';
+    setTimeout(() => {
+      if (_recognition && !mp.submitted) {
+        setMpMicState('listening');
+        const lbl = document.getElementById('mp-mic-center-label');
+        if (lbl) {
+          if (_mpArtistFound && !_mpTitleFound)  lbl.textContent = 'Now say the title! 🎵';
+          else if (_mpTitleFound && !_mpArtistFound) lbl.textContent = 'Now say the artist! 🎤';
+        }
+      }
+    }, 1200);
   } else {
-    // Fill whichever field isn't found yet
-    if (!_mpArtistFound && !_mpTitleFound) {
-      titleInput.value = t; // default to title first
-    } else if (_mpArtistFound && !_mpTitleFound) {
-      titleInput.value = t;
-      _mpTitleFound = true;
-    } else if (!_mpArtistFound && _mpTitleFound) {
-      artistInput.value = t;
-      _mpArtistFound = true;
+    if (label) label.textContent = 'LISTENING…';
+  }
+}
+
+/* ── Smart voice answer matching ─────────────────────────── */
+// Uses the same fuzzy match as scoring — answers are checked against
+// the actual track so the experience mirrors solo AI mode.
+function onMicSpeech(transcript) {
+  const track = mp.enrichedTracks[mp.round - 1]; // round is 1-based when playing
+  if (!track || mp.submitted) return;
+
+  const newArtistOk = !_mpArtistFound && answerOk(transcript, track.a);
+  const newTitleOk  = !_mpTitleFound  && answerOk(transcript, track.t);
+
+  if (!newArtistOk && !newTitleOk) {
+    setMpMicState('wrong');
+    return;
+  }
+
+  if (newArtistOk) {
+    _mpArtistFound = true;
+    document.getElementById('mp-artist-input').value = track.a;
+  }
+  if (newTitleOk) {
+    _mpTitleFound = true;
+    document.getElementById('mp-title-input').value = track.t;
+  }
+
+  updateVoiceChips();
+
+  if (_mpArtistFound && _mpTitleFound) {
+    setMpMicState('correct');
+    stopMicAnswer();
+    setTimeout(() => autoSubmitAfterVoice(), 700);
+  } else {
+    setMpMicState('listening');
+    const lbl = document.getElementById('mp-mic-center-label');
+    if (lbl) {
+      lbl.textContent = _mpArtistFound ? 'Now say the title! 🎵' : 'Now say the artist! 🎤';
     }
   }
-  updateVoiceChips();
 }
 
 function autoSubmitAfterVoice() {
