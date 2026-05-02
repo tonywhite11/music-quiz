@@ -751,12 +751,14 @@ function updateVoiceChips() {
 }
 
 function showMicCenter(show) {
-  const mc  = document.getElementById('mp-mic-center');
-  const num = document.getElementById('mp-timer-num');
-  const vc  = document.getElementById('mp-voice-chips');
-  if (mc)  mc.classList.toggle('hidden', !show);
-  if (num) num.style.display = show ? 'none' : '';
-  if (vc)  vc.classList.toggle('hidden', !show);
+  const mc      = document.getElementById('mp-mic-center');
+  const num     = document.getElementById('mp-timer-num');
+  const vc      = document.getElementById('mp-voice-chips');
+  const answers = document.getElementById('mp-answer-area');
+  if (mc)      mc.classList.toggle('hidden', !show);
+  if (num)     num.style.display = show ? 'none' : '';
+  if (vc)      vc.classList.toggle('hidden', !show);
+  if (answers) answers.style.display = show ? 'none' : 'block';
 }
 
 function startMicAnswer() {
@@ -777,6 +779,9 @@ function startMicAnswer() {
 
   setMpMicState('listening');
   showMicCenter(true);
+  // Hide the "type instead" link while mic is starting fresh
+  const typeLink = document.getElementById('mp-type-instead');
+  if (typeLink) typeLink.style.display = '';
 
   rec.onresult = (e) => {
     let interim = '', final = '';
@@ -831,7 +836,7 @@ function setMpMicState(s) {
   btn.classList.remove('listening', 'correct', 'wrong');
   if (s === 'listening') {
     btn.classList.add('listening');
-    if (label) label.textContent = 'LISTENING…';
+    if (label) label.textContent = 'Listening…';
   } else if (s === 'correct') {
     btn.classList.add('correct');
     if (label) label.textContent = 'Got it! ✅';
@@ -849,7 +854,7 @@ function setMpMicState(s) {
       }
     }, 1200);
   } else {
-    if (label) label.textContent = 'LISTENING…';
+    if (label) label.textContent = 'Listening…';
   }
 }
 

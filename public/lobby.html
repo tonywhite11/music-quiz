@@ -263,6 +263,16 @@
       .mp-leave-btn:hover { color: var(--neon-pink); border-color: var(--neon-pink); }
 
       .mp-answer-area { width: 100%; margin-bottom: 16px; }
+      .mp-type-link {
+        display: block;
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--foreground-muted);
+        text-decoration: none;
+        opacity: 0.6;
+        text-align: center;
+      }
+      .mp-type-link:hover { opacity: 1; color: var(--neon-cyan); }
       .mp-input-group { margin-bottom: 12px; }
 
       .answered-banner {
@@ -569,10 +579,12 @@
         </div>
 
         <div id="mp-voice-chips" class="ai-play-hint hidden">
+          <p class="ai-play-hint-text">Say the artist name, or the song title</p>
           <div class="ai-voice-status">
             <span id="mp-artist-chip" class="ai-field-chip">🎤 Artist</span>
             <span id="mp-title-chip"  class="ai-field-chip">🎤 Title</span>
           </div>
+          <a id="mp-type-instead" href="#" class="mp-type-link" onclick="event.preventDefault();document.getElementById('mp-answer-area').style.display='block';this.style.display='none'">✏️ type instead</a>
         </div>
 
         <div id="mp-answered-banner" class="answered-banner" style="display:none">
