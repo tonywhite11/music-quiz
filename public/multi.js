@@ -762,10 +762,21 @@ function showMicCenter(show) {
 }
 
 function startMicAnswer() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  // Cross-browser SpeechRecognition support:
+  // Chrome/Edge: window.SpeechRecognition or window.webkitSpeechRecognition
+  // Safari (iOS 14.5+, macOS 14+): window.webkitSpeechRecognition
+  // Firefox: NOT supported — falls back to text input
+  // Samsung Internet: window.webkitSpeechRecognition
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+           || window.mozSpeechRecognition || window.msSpeechRecognition;
   const noSupport = document.getElementById('mp-mic-no-support');
   if (!SR) {
-    if (noSupport) noSupport.style.display = 'block';
+    // Show text inputs immediately for unsupported browsers (e.g. Firefox)
+    if (noSupport) {
+      noSupport.textContent = '🎤 Voice not supported in this browser — please type your answers below';
+      noSupport.style.display = 'block';
+    }
+    showMicCenter(false);
     return;
   }
   stopMicAnswer();
@@ -775,23 +786,23 @@ function startMicAnswer() {
   rec.lang            = 'en-US';
   rec.interimResults  = true;
   rec.continuous      = true;
-  rec.maxAlternatives = 1;
+  rec.maxAlternatives = 3; // use more alternatives for better matching
 
   setMpMicState('listening');
   showMicCenter(true);
-  // Hide the "type instead" link while mic is starting fresh
   const typeLink = document.getElementById('mp-type-instead');
   if (typeLink) typeLink.style.display = '';
 
   rec.onresult = (e) => {
     let interim = '', final = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
+      // Try all alternatives — pick best match later
       const t = e.results[i][0].transcript;
       if (e.results[i].isFinal) final += t;
       else                      interim += t;
     }
     const heard = (final || interim).trim();
-    if (heard) onMicSpeech(heard);
+    if (heard) onMicSpeech(heard, e.results[e.resultIndex]);
     if (final && _mpArtistFound && _mpTitleFound) {
       stopMicAnswer();
       autoSubmitAfterVoice();
@@ -800,9 +811,15 @@ function startMicAnswer() {
 
   rec.onerror = (e) => {
     if (e.error === 'no-speech' || e.error === 'aborted') return;
-    if (e.error === 'not-allowed') {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
       stopMicAnswer();
-      if (noSupport) { noSupport.textContent = '🚫 Allow mic in browser settings'; noSupport.style.display = 'block'; }
+      if (noSupport) { noSupport.textContent = '🚫 Mic blocked — allow mic access in browser settings, or type below'; noSupport.style.display = 'block'; }
+      return;
+    }
+    if (e.error === 'network') {
+      // Chrome requires internet for STT; gracefully fall back
+      stopMicAnswer();
+      if (noSupport) { noSupport.textContent = '⚠️ Voice needs internet — please type your answers below'; noSupport.style.display = 'block'; }
       return;
     }
     console.warn('STT error:', e.error);
@@ -816,7 +833,13 @@ function startMicAnswer() {
   };
 
   _recognition = rec;
-  try { rec.start(); } catch (e) { console.warn('STT start failed:', e); stopMicAnswer(); }
+  try {
+    rec.start();
+  } catch (e) {
+    console.warn('STT start failed:', e);
+    stopMicAnswer();
+    if (noSupport) { noSupport.textContent = '⚠️ Could not start mic — please type your answers below'; noSupport.style.display = 'block'; }
+  }
 }
 
 function stopMicAnswer() {
@@ -861,12 +884,20 @@ function setMpMicState(s) {
 /* ── Smart voice answer matching ─────────────────────────── */
 // Uses the same fuzzy match as scoring — answers are checked against
 // the actual track so the experience mirrors solo AI mode.
-function onMicSpeech(transcript) {
+function onMicSpeech(transcript, resultItem) {
   const track = mp.enrichedTracks[mp.round - 1]; // round is 1-based when playing
   if (!track || mp.submitted) return;
 
-  const newArtistOk = !_mpArtistFound && answerOk(transcript, track.a);
-  const newTitleOk  = !_mpTitleFound  && answerOk(transcript, track.t);
+  // Try all recognition alternatives for the best chance of matching
+  const candidates = [transcript];
+  if (resultItem) {
+    for (let i = 1; i < resultItem.length; i++) {
+      candidates.push(resultItem[i].transcript);
+    }
+  }
+
+  const newArtistOk = !_mpArtistFound && candidates.some(c => answerOk(c, track.a));
+  const newTitleOk  = !_mpTitleFound  && candidates.some(c => answerOk(c, track.t));
 
   if (!newArtistOk && !newTitleOk) {
     setMpMicState('wrong');

@@ -20,12 +20,13 @@
         flex-direction: column;
         align-items: center;
         justify-content: flex-start;
-        padding: 24px 16px 48px;
+        padding: clamp(16px, 4vw, 32px) clamp(12px, 4vw, 24px) 48px;
         position: relative;
         z-index: 1;
         width: 100%;
-        max-width: 520px;
+        max-width: 600px;
         margin: 0 auto;
+        box-sizing: border-box;
       }
 
       /* ── Join phase ─────────────────────────────────────── */
@@ -211,21 +212,26 @@
 
       .mp-timer-wrap {
         position: relative;
-        width: 120px;
-        height: 120px;
-        margin: 0 auto 20px;
+        width: clamp(180px, 45vw, 240px);
+        height: clamp(180px, 45vw, 240px);
+        margin: 0 auto clamp(16px, 4vw, 28px);
+        flex-shrink: 0;
       }
-      .mp-timer-svg { width: 120px; height: 120px; transform: rotate(-90deg); }
-      .mp-timer-track { fill: none; stroke: oklch(0.3 0.07 285); stroke-width: 5; }
+      .mp-timer-svg {
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+      }
+      .mp-timer-track { fill: none; stroke: oklch(0.3 0.07 285); stroke-width: 4; }
       .mp-timer-ring {
         fill: none;
         stroke: var(--neon-violet);
-        stroke-width: 5;
+        stroke-width: 4;
         stroke-linecap: round;
         stroke-dasharray: 301.6;
         stroke-dashoffset: 0;
         transition: stroke 0.5s;
-        filter: drop-shadow(0 0 6px oklch(0.65 0.27 300 / 0.9));
+        filter: drop-shadow(0 0 8px oklch(0.65 0.27 300 / 0.9));
       }
       .mp-timer-ring.urgent { stroke: var(--neon-pink); }
       .mp-timer-num {
@@ -234,7 +240,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 32px;
+        font-size: clamp(36px, 9vw, 52px);
         font-weight: 700;
         color: var(--neon-violet);
       }
@@ -246,10 +252,29 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 4px;
+        gap: 6px;
         pointer-events: none;
       }
       .mp-mic-center.hidden { display: none !important; }
+      /* Override game.css mic button size for multiplayer — needs to fill the bigger ring */
+      #mp-mic-center-btn.ai-play-mic-btn {
+        width: clamp(80px, 20vw, 110px);
+        height: clamp(80px, 20vw, 110px);
+      }
+      #mp-mic-center-btn .ai-mic-svg-icon {
+        width: clamp(34px, 8vw, 46px);
+        height: clamp(34px, 8vw, 46px);
+      }
+      #mp-mic-center-label.ai-play-label {
+        font-size: clamp(11px, 2.5vw, 14px);
+      }
+      /* Voice chips row below timer */
+      #mp-voice-chips .ai-play-hint-text { font-size: clamp(12px, 3vw, 14px); text-align: center; }
+      #mp-voice-chips .ai-field-chip { font-size: clamp(12px, 3vw, 15px); padding: 5px 14px; }
+      /* Header responsiveness */
+      .mp-header { flex-wrap: wrap; gap: 6px; }
+      .mp-round-label { font-size: clamp(12px, 3vw, 15px); }
+      .mp-theme-tag { font-size: clamp(11px, 2.5vw, 13px); }
       .mp-leave-btn {
         font-size: 12px;
         background: none;
@@ -263,6 +288,9 @@
       .mp-leave-btn:hover { color: var(--neon-pink); border-color: var(--neon-pink); }
 
       .mp-answer-area { width: 100%; margin-bottom: 16px; }
+      /* Responsive input sizing */
+      .mp-input { font-size: clamp(15px, 4vw, 18px); padding: clamp(10px, 2.5vw, 14px) 16px; }
+      #mp-submit-btn { height: clamp(44px, 10vw, 54px) !important; font-size: clamp(14px, 3.5vw, 16px) !important; }
       .mp-type-link {
         display: block;
         margin-top: 8px;
