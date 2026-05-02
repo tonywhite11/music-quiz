@@ -1038,6 +1038,9 @@ function setupChannel(code) {
   ch.on('broadcast', { event: 'players-update' },({ payload }) => onPlayersUpdate(payload));
 
   // Game flow
+  ch.on('broadcast', { event: 'flip-start' },    ({ payload }) => onFlipStart(payload));
+  ch.on('broadcast', { event: 'flip-result' },   ({ payload }) => onFlipResult(payload));
+  ch.on('broadcast', { event: 'theme-chosen' },  ({ payload }) => hostHandleThemeChosen(payload));
   ch.on('broadcast', { event: 'game-start' },   ({ payload }) => onGameStart(payload));
   ch.on('broadcast', { event: 'round-start' },  ({ payload }) => onRoundStart(payload));
   ch.on('broadcast', { event: 'submit-answer' },({ payload }) => hostHandleAnswer(payload));
@@ -1205,8 +1208,7 @@ function guestHandleJoinAck({ forId, code, players }) {
   players.forEach(p => { mp.guestScores[p.id] = p.score || 0; });
   document.getElementById('room-code-display').textContent = code;
   renderLobbyPlayers(players);
-  document.getElementById('host-controls').style.display = 'none';
-  document.getElementById('guest-waiting').style.display = 'block';
+  // Guests just see the player list and wait — host initiates the flip
   showPhase('phase-lobby');
 }
 
@@ -1297,6 +1299,124 @@ function timerStop() {
   if (timerRaf) { cancelAnimationFrame(timerRaf); timerRaf = null; }
 }
 
+/* ── Coin flip ─────────────────────────────────────────────── */
+function hostDoFlip() {
+  if (!mp.isHost) return;
+  // Randomly pick a winner from all players in the room
+  const playerIds = [...hostState.players.keys()];
+  const winnerId  = playerIds[Math.floor(Math.random() * playerIds.length)];
+  const winner    = hostState.players.get(winnerId);
+  // Trigger animation on both sides, then broadcast the result
+  onFlipStart();
+  bcast('flip-start', {});
+  setTimeout(() => {
+    const payload = { winnerId, winnerName: winner.name };
+    bcast('flip-result', payload);
+    onFlipResult(payload);
+  }, 1900);
+}
+
+function onFlipStart() {
+  document.getElementById('flip-area').style.display = 'none';
+  const wrap = document.getElementById('coin-flip-wrap');
+  const coin = document.getElementById('coin-el');
+  const lbl  = document.getElementById('coin-result-label');
+  wrap.style.display = 'block';
+  coin.classList.remove('coin-spinning');
+  void coin.offsetWidth; // force reflow to restart animation
+  coin.classList.add('coin-spinning');
+  if (lbl) lbl.textContent = 'Flipping…';
+}
+
+function onFlipResult({ winnerId, winnerName }) {
+  const iWon = winnerId === mp.myId;
+  const lbl  = document.getElementById('coin-result-label');
+  if (lbl) lbl.textContent = iWon ? '🎉 You pick the theme!' : `🎲 ${escHtml(winnerName)} picks the theme!`;
+  setTimeout(() => {
+    document.getElementById('coin-flip-wrap').style.display = 'none';
+    if (iWon) {
+      document.getElementById('theme-picker-section').style.display = 'block';
+      const prompt = document.getElementById('theme-picker-prompt');
+      if (prompt) prompt.textContent = '🎵 You won the flip! Pick a theme:';
+      buildThemeGrid();
+    } else {
+      const wait = document.getElementById('theme-wait-section');
+      const msg  = document.getElementById('theme-wait-msg');
+      if (msg) msg.textContent = `Waiting for ${escHtml(winnerName)} to pick a theme…`;
+      wait.style.display = 'block';
+    }
+  }, 800);
+}
+
+/* ── Host: process theme selection from winner ─────────────── */
+async function hostHandleThemeChosen({ themeId }) {
+  if (!mp.isHost) return;
+  const theme = THEMES.find(t => t.id === themeId);
+  if (!theme) return;
+
+  const loadingDiv  = document.getElementById('theme-loading');
+  const loadingText = document.getElementById('theme-loading-text');
+  if (loadingDiv)  { loadingDiv.style.display = 'block'; }
+  if (loadingText) loadingText.textContent = `Fetching ${theme.label} previews…`;
+  mp.themeFetching = true;
+
+  try {
+    let enriched = await fetchThemeTracks(theme, 15);
+    if (!enriched || enriched.length < 5) {
+      let rawTracks = theme.tracks || [];
+      if (theme.random || !rawTracks.length) {
+        rawTracks = [];
+        const pool = THEMES.filter(t => !t.random && t.tracks);
+        pool.forEach(t => {
+          const shuffled = [...t.tracks].sort(() => Math.random() - 0.5);
+          rawTracks.push(...shuffled.slice(0, 2));
+        });
+        rawTracks = rawTracks.sort(() => Math.random() - 0.5).slice(0, 30);
+      }
+      const shuffled = [...rawTracks].sort(() => Math.random() - 0.5).slice(0, 25);
+      enriched = await enrichTracks(shuffled);
+    }
+    mp.enrichedTracks = enriched.slice(0, 13);
+    if (mp.enrichedTracks.length < 1) {
+      if (loadingText) loadingText.textContent = '⚠️ No previews found — try another theme';
+      mp.themeFetching = false;
+      return;
+    }
+    if (loadingText) loadingText.textContent = `✅ ${mp.enrichedTracks.length} tracks ready!`;
+
+    // Sanitise and start
+    hostState.tracks = mp.enrichedTracks
+      .filter(t => t && typeof t.previewUrl === 'string' && t.previewUrl.startsWith('https://'))
+      .map(t => ({
+        a:          String(t.a   || '').slice(0, 100),
+        t:          String(t.t   || '').slice(0, 100),
+        src:        t.src ? String(t.src).slice(0, 100) : undefined,
+        previewUrl: t.previewUrl,
+        cover:      typeof t.cover === 'string' && t.cover.startsWith('https://') ? t.cover : null,
+      }))
+      .slice(0, ROOM_ROUNDS + 3);
+
+    if (hostState.tracks.length < 1) {
+      if (loadingText) loadingText.textContent = '⚠️ No valid previews — try another theme';
+      return;
+    }
+    hostState.round = 0;
+    hostState.phase = 'starting';
+    hostState.players.forEach(p => { p.score = 0; });
+
+    const totalRounds  = Math.min(ROOM_ROUNDS, hostState.tracks.length);
+    const startPayload = { themeId: theme.id, themeLabel: theme.label, themeEmoji: theme.emoji, totalRounds };
+    bcast('game-start', startPayload);
+    onGameStart(startPayload);
+    setTimeout(() => hostStartRound(), 2000);
+  } catch (e) {
+    if (loadingText) loadingText.textContent = '❌ Error fetching tracks. Try another theme.';
+    console.error(e);
+  } finally {
+    mp.themeFetching = false;
+  }
+}
+
 /* ── Lobby: build players list ───────────────────────────── */
 function renderLobbyPlayers(players) {
   const list = document.getElementById('lobby-players-list');
@@ -1334,48 +1454,17 @@ async function selectTheme(theme, btn) {
   btn.classList.add('selected');
   mp.selectedTheme = theme;
 
-  // Disable start until we have tracks
-  document.getElementById('start-game-btn').disabled = true;
-  mp.enrichedTracks = [];
-
-  // Show loading indicator
-  const loadingDiv = document.getElementById('theme-loading');
-  const loadingText = document.getElementById('theme-loading-text');
-  loadingDiv.style.display = 'block';
-  loadingText.textContent = `Fetching ${theme.label} previews…`;
-  mp.themeFetching = true;
-
-  try {
-    // Dynamic iTunes fetch first — fresh random pool every game
-    let enriched = await fetchThemeTracks(theme, 15);
-    if (!enriched || enriched.length < 5) {
-      // Fallback to hardcoded tracks
-      let rawTracks = theme.tracks || [];
-      if (theme.random || !rawTracks.length) {
-        rawTracks = [];
-        const pool = THEMES.filter(t => !t.random && t.tracks);
-        pool.forEach(t => {
-          const shuffled = [...t.tracks].sort(() => Math.random() - 0.5);
-          rawTracks.push(...shuffled.slice(0, 2));
-        });
-        rawTracks = rawTracks.sort(() => Math.random() - 0.5).slice(0, 30);
-      }
-      const shuffled = [...rawTracks].sort(() => Math.random() - 0.5).slice(0, 25);
-      enriched = await enrichTracks(shuffled);
-    }
-    mp.enrichedTracks = enriched.slice(0, 13); // keep a few extra beyond 10
-
-    if (mp.enrichedTracks.length >= 5) {
-      loadingText.textContent = `✅ ${mp.enrichedTracks.length} tracks ready!`;
-      document.getElementById('start-game-btn').disabled = false;
-    } else {
-      loadingText.textContent = `⚠️ Only ${mp.enrichedTracks.length} previews found — try another theme`;
-    }
-  } catch (e) {
-    loadingText.textContent = '❌ Error fetching tracks. Try again.';
-    console.error(e);
-  } finally {
-    mp.themeFetching = false;
+  // Tell the host which theme was chosen (host also listens to own broadcast via onFlipResult path)
+  bcast('theme-chosen', { themeId: theme.id });
+  if (mp.isHost) {
+    // Host won the flip — handle directly
+    await hostHandleThemeChosen({ themeId: theme.id });
+  } else {
+    // Guest won the flip — show loading indicator and wait for game-start
+    const loadingDiv  = document.getElementById('theme-loading');
+    const loadingText = document.getElementById('theme-loading-text');
+    if (loadingDiv)  { loadingDiv.style.display = 'block'; }
+    if (loadingText) loadingText.textContent = 'Waiting for host to fetch tracks…';
   }
 }
 
@@ -1639,9 +1728,7 @@ document.getElementById('create-room-btn').addEventListener('click', async () =>
       document.getElementById('room-code-display').textContent = code;
       mp.players = [{ id: mp.myId, name, avatar: '🎧', isHost: true, score: 0 }];
       renderLobbyPlayers(mp.players);
-      document.getElementById('host-controls').style.display = 'block';
-      document.getElementById('guest-waiting').style.display = 'none';
-      buildThemeGrid();
+      document.getElementById('flip-area').style.display = 'block';
       showPhase('phase-lobby');
     }
   });
@@ -1710,39 +1797,9 @@ document.getElementById('copy-link-btn').addEventListener('click', () => {
   });
 });
 
-// Start game (host only)
-document.getElementById('start-game-btn').addEventListener('click', () => {
-  if (!mp.enrichedTracks.length) return;
-  hostState.tracks = mp.enrichedTracks
-    .filter(t => t && typeof t.previewUrl === 'string' && t.previewUrl.startsWith('https://'))
-    .map(t => ({
-      a:          String(t.a   || '').slice(0, 100),
-      t:          String(t.t   || '').slice(0, 100),
-      src:        t.src ? String(t.src).slice(0, 100) : undefined,
-      previewUrl: t.previewUrl,
-      cover:      typeof t.cover === 'string' && t.cover.startsWith('https://') ? t.cover : null,
-    }))
-    .slice(0, ROOM_ROUNDS + 3);
-
-  if (hostState.tracks.length < 1) {
-    showError('No valid previews found. Try a different theme.');
-    return;
-  }
-
-  const theme = mp.selectedTheme
-    ? { id: mp.selectedTheme.id, label: mp.selectedTheme.label, emoji: mp.selectedTheme.emoji }
-    : { id: '', label: 'Music Quiz', emoji: '🎵' };
-
-  hostState.round = 0;
-  hostState.phase = 'starting';
-  hostState.players.forEach(p => { p.score = 0; });
-
-  const totalRounds = Math.min(ROOM_ROUNDS, hostState.tracks.length);
-  const startPayload = { themeId: theme.id, themeLabel: theme.label, themeEmoji: theme.emoji, totalRounds };
-  bcast('game-start', startPayload);
-  onGameStart(startPayload);
-  document.getElementById('start-game-btn').disabled = true;
-  setTimeout(() => hostStartRound(), 2000);
+// Flip button (host only)
+document.getElementById('flip-btn')?.addEventListener('click', () => {
+  hostDoFlip();
 });
 
 // Mic button — tap to manually re-start listening if needed
