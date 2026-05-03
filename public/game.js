@@ -2185,8 +2185,9 @@ async function selectTheme(theme) {
       showPhase("phase-theme");
       return;
     }
-    // Shuffle then deduplicate by artist so no artist appears twice in a game
-    state.tracks = dedupByArtist(shuffle(enriched), TOTAL_ROUNDS);
+    // Deprioritize recently played tracks for this theme, then dedup by artist
+    const freshFirst = sortByRecency(enriched, theme.id);
+    state.tracks = dedupByArtist(freshFirst, TOTAL_ROUNDS);
     state.round = 0;
     state.rounds = [];
     state.score = 0;
@@ -2595,6 +2596,9 @@ function showGameOver() {
 
   showPhase("phase-gameover");
 
+  // Remember which tracks were just played so next game feels fresh
+  saveRecentlyPlayed(state.theme?.id, state.tracks.map(t => t.a + '|' + t.t));
+
   // Achievements
   const achievements = computeAchievements();
   const achSection = document.getElementById("achievements-section");
@@ -2714,6 +2718,25 @@ function formatLbDate(iso) {
   const m = parseInt(parts[1], 10) - 1;
   const d = parseInt(parts[2], 10);
   return `${_MONTHS[m] ?? parts[1]} ${d}`;
+}
+
+// Save recently played track keys for a theme (keeps last 20)
+function saveRecentlyPlayed(themeId, keys) {
+  if (!themeId || themeId === 'random') return;
+  try {
+    localStorage.setItem(`quiz-recent-${themeId}`, JSON.stringify(keys.slice(0, 20)));
+  } catch (e) {}
+}
+
+// Sort enriched tracks so recently played ones come last, fresh ones first
+function sortByRecency(arr, themeId) {
+  if (!themeId || themeId === 'random') return shuffle(arr);
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem(`quiz-recent-${themeId}`) || '[]'); } catch (e) {}
+  const recentSet = new Set(recent);
+  const fresh = shuffle(arr.filter(t => !recentSet.has(t.a + '|' + t.t)));
+  const played = shuffle(arr.filter(t =>  recentSet.has(t.a + '|' + t.t)));
+  return [...fresh, ...played];
 }
 
 // Pick up to `limit` tracks ensuring each artist appears at most once.
