@@ -216,6 +216,13 @@
           <!-- Skip — shown in both modes -->
           <button id="skip-btn" class="btn btn-ghost skip-btn">Skip</button>
 
+          <!-- Volume -->
+          <div class="volume-wrap">
+            <span class="vol-icon" aria-hidden="true">🔊</span>
+            <input id="volume-slider" type="range" class="vol-slider"
+              min="0" max="200" value="100" step="1" aria-label="Volume" />
+          </div>
+
           <!-- Progress dots -->
           <div id="progress-dots" class="progress-dots"></div>
         </div>

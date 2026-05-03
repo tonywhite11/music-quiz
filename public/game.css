@@ -1265,6 +1265,46 @@
   width: 100%;
 }
 
+/* Volume slider */
+.volume-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  width: 100%;
+  padding: 0 2px;
+}
+.vol-icon { font-size: 18px; line-height: 1; flex-shrink: 0; }
+.vol-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: oklch(0.35 0.08 260 / 0.6);
+  outline: none;
+  cursor: pointer;
+}
+.vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: oklch(0.82 0.2 200);
+  cursor: pointer;
+  box-shadow: 0 0 6px oklch(0.82 0.2 200 / 0.6);
+}
+.vol-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: oklch(0.82 0.2 200);
+  cursor: pointer;
+  box-shadow: 0 0 6px oklch(0.82 0.2 200 / 0.6);
+}
+
 /* Shared animations */
 @keyframes ai-mic-pulse {
   0%, 100% { box-shadow: 0 0 12px oklch(0.85 0.18 200 / 0.3); }

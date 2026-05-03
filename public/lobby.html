@@ -395,6 +395,24 @@
         display: none;
       }
 
+      /* Volume slider thumb */
+      #mp-volume-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px; height: 18px;
+        border-radius: 50%;
+        background: oklch(0.82 0.2 200);
+        cursor: pointer;
+        box-shadow: 0 0 6px oklch(0.82 0.2 200 / 0.6);
+      }
+      #mp-volume-slider::-moz-range-thumb {
+        width: 18px; height: 18px;
+        border: none; border-radius: 50%;
+        background: oklch(0.82 0.2 200);
+        cursor: pointer;
+        box-shadow: 0 0 6px oklch(0.82 0.2 200 / 0.6);
+      }
+
       .live-scores { width: 100%; }
       .live-scores-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--foreground-muted); margin-bottom: 8px; }
       .live-score-row {
@@ -687,6 +705,15 @@
         <div id="mp-replay-banner" class="replay-banner">🔁 Everyone missed it — music is replaying!</div>
 
         <button id="mp-skip-btn" class="btn btn-ghost skip-btn" style="display:none">Skip Round</button>
+
+        <!-- Volume -->
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;width:100%;padding:0 2px">
+          <span style="font-size:18px;flex-shrink:0" aria-hidden="true">🔊</span>
+          <input id="mp-volume-slider" type="range"
+            min="0" max="200" value="100" step="1" aria-label="Volume"
+            style="-webkit-appearance:none;appearance:none;flex:1;height:5px;border-radius:3px;
+                   background:oklch(0.35 0.08 260 / 0.6);outline:none;cursor:pointer;" />
+        </div>
 
         <div class="live-scores" id="live-scores-wrap">
           <div class="live-scores-title">Live Scores</div>

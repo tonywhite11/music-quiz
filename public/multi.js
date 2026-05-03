@@ -1290,16 +1290,29 @@ function guestHandleJoinError({ forId, message }) {
 const audio = document.getElementById('mp-audio');
 let audioCtx  = null;
 let audioSrc  = null;
+let audioGain = null;
 
 function initAudio() {
   if (audioCtx) return;
   try {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    audioSrc = audioCtx.createMediaElementSource(audio);
-    const gain = audioCtx.createGain();
-    gain.gain.value = 2.0;
-    audioSrc.connect(gain);
-    gain.connect(audioCtx.destination);
+    audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+    audioSrc  = audioCtx.createMediaElementSource(audio);
+    audioGain = audioCtx.createGain();
+    const saved = parseFloat(localStorage.getItem('quiz-volume') ?? '1');
+    audioGain.gain.value = saved * 2.0;
+    audioSrc.connect(audioGain);
+    audioGain.connect(audioCtx.destination);
+
+    // Wire volume slider (shown in phase-playing)
+    const slider = document.getElementById('mp-volume-slider');
+    if (slider) {
+      slider.value = Math.round(saved * 100);
+      slider.addEventListener('input', () => {
+        const v = slider.value / 100;
+        if (audioGain) audioGain.gain.value = v * 2.0;
+        localStorage.setItem('quiz-volume', String(v));
+      });
+    }
   } catch (e) { /* fallback to native volume */ }
 }
 

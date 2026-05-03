@@ -17,16 +17,18 @@ function savePlayerName(name) {
 // Cleaned version: no robot WebRTC routing, just local browser audio.
 const _audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
 let _audioElSource = null;
+let _masterGain    = null;
 
 function initAudioRouting() {
   if (_audioElSource) return;
   try {
     const el = document.getElementById("preview-audio");
     _audioElSource = _audioCtx.createMediaElementSource(el);
-    const masterGain = _audioCtx.createGain();
-    masterGain.gain.value = 2.0;
-    _audioElSource.connect(masterGain);
-    masterGain.connect(_audioCtx.destination);
+    _masterGain = _audioCtx.createGain();
+    const saved = parseFloat(localStorage.getItem('quiz-volume') ?? '1');
+    _masterGain.gain.value = saved * 2.0;
+    _audioElSource.connect(_masterGain);
+    _masterGain.connect(_audioCtx.destination);
 
     const ttsEl = document.getElementById("tts-audio");
     if (ttsEl) {
@@ -35,6 +37,17 @@ function initAudioRouting() {
       ttsGain.gain.value = 2.2;
       ttsSrc.connect(ttsGain);
       ttsGain.connect(_audioCtx.destination);
+    }
+
+    // Wire volume slider
+    const slider = document.getElementById('volume-slider');
+    if (slider) {
+      slider.value = Math.round(saved * 100);
+      slider.addEventListener('input', () => {
+        const v = slider.value / 100;
+        if (_masterGain) _masterGain.gain.value = v * 2.0;
+        localStorage.setItem('quiz-volume', String(v));
+      });
     }
   } catch (e) {
     console.warn("Audio routing:", e);
