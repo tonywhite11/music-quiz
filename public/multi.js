@@ -1460,21 +1460,19 @@ async function hostHandleThemeChosen({ themeId }) {
   mp.themeFetching = true;
 
   try {
-    let enriched = await fetchThemeTracks(theme, 15);
-    if (!enriched || enriched.length < 5) {
-      let rawTracks = theme.tracks || [];
-      if (theme.random || !rawTracks.length) {
-        rawTracks = [];
-        const pool = THEMES.filter(t => !t.random && t.tracks);
-        pool.forEach(t => {
-          const shuffled = [...t.tracks].sort(() => Math.random() - 0.5);
-          rawTracks.push(...shuffled.slice(0, 2));
-        });
-        rawTracks = rawTracks.sort(() => Math.random() - 0.5).slice(0, 30);
-      }
-      const shuffled = [...rawTracks].sort(() => Math.random() - 0.5).slice(0, 25);
-      enriched = await enrichTracks(shuffled);
+    // Always use the curated hardcoded list — look up a preview URL for each known artist+title
+    let rawTracks = theme.tracks || [];
+    if (theme.random || !rawTracks.length) {
+      rawTracks = [];
+      const pool = THEMES.filter(t => !t.random && t.tracks);
+      pool.forEach(t => {
+        const shuffled = [...t.tracks].sort(() => Math.random() - 0.5);
+        rawTracks.push(...shuffled.slice(0, 2));
+      });
+      rawTracks = rawTracks.sort(() => Math.random() - 0.5).slice(0, 30);
     }
+    const shuffled = [...rawTracks].sort(() => Math.random() - 0.5).slice(0, 25);
+    const enriched = await enrichTracks(shuffled);
     mp.enrichedTracks = enriched.slice(0, 13);
     if (mp.enrichedTracks.length < 1) {
       if (loadingText) loadingText.textContent = '⚠️ No previews found — try another theme';

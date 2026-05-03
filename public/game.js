@@ -2160,21 +2160,17 @@ async function selectTheme(theme) {
       const rawTracks = await generateTracksAI(theme.label);
       enriched = await enrichTracks(rawTracks.slice(0, Math.min(rawTracks.length, 40)));
     } else {
-      // Dynamic iTunes fetch first — fresh random pool every game
-      enriched = await fetchThemeTracks(theme, 25);
-      if (!enriched || enriched.length < 8) {
-        // Fallback: hardcoded list + server-proxy enrichment
-        let rawTracks;
-        if (theme.random) {
-          const pool = THEMES
-            .filter(t => !t.random && t.tracks)
-            .map(t => t.tracks[Math.floor(Math.random() * t.tracks.length)]);
-          rawTracks = shuffle(pool);
-        } else {
-          rawTracks = shuffle([...theme.tracks]);
-        }
-        enriched = await enrichTracks(rawTracks.slice(0, Math.min(rawTracks.length, 40)));
+      // Always use the curated hardcoded list — look up a preview URL for each known artist+title
+      let rawTracks;
+      if (theme.random) {
+        const pool = THEMES
+          .filter(t => !t.random && t.tracks)
+          .map(t => t.tracks[Math.floor(Math.random() * t.tracks.length)]);
+        rawTracks = shuffle(pool);
+      } else {
+        rawTracks = shuffle([...theme.tracks]);
       }
+      enriched = await enrichTracks(rawTracks.slice(0, Math.min(rawTracks.length, 40)));
     }
     if (enriched.length < 3) {
       alert("Couldn't load enough tracks. Try another theme.");
