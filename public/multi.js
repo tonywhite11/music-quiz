@@ -2,6 +2,25 @@
    Blind Test — Multiplayer Client
    ========================================================= */
 
+// Save recently played track keys for a theme (keeps last 20)
+function saveRecentlyPlayed(themeId, keys) {
+  if (!themeId || themeId === 'random') return;
+  try {
+    localStorage.setItem(`quiz-recent-${themeId}`, JSON.stringify(keys.slice(0, 20)));
+  } catch (e) {}
+}
+
+// Sort enriched tracks so recently played ones come last, fresh ones first
+function sortByRecency(arr, themeId) {
+  if (!themeId || themeId === 'random') return [...arr].sort(() => Math.random() - 0.5);
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem(`quiz-recent-${themeId}`) || '[]'); } catch (e) {}
+  const recentSet = new Set(recent);
+  const fresh  = [...arr].filter(t => !recentSet.has(t.a + '|' + t.t)).sort(() => Math.random() - 0.5);
+  const played = [...arr].filter(t =>  recentSet.has(t.a + '|' + t.t)).sort(() => Math.random() - 0.5);
+  return [...fresh, ...played];
+}
+
 // Pick up to `limit` tracks ensuring each artist appears at most once.
 function dedupByArtist(arr, limit) {
   const seen   = new Set();
@@ -1284,6 +1303,10 @@ function hostEndRound() {
 function hostEndGame() {
   if (hostState.roundTimer) { clearTimeout(hostState.roundTimer); hostState.roundTimer = null; }
   hostState.phase = 'gameover';
+  saveRecentlyPlayed(
+    hostState.currentTheme?.id,
+    hostState.tracks.map(t => t.a + '|' + t.t)
+  );
   const payload = { scores: hostGetScores() };
   bcast('game-end', payload);
   onGameEnd(payload);
@@ -1479,7 +1502,8 @@ async function hostHandleThemeChosen({ themeId }) {
     }
     const shuffled = [...rawTracks].sort(() => Math.random() - 0.5).slice(0, 25);
     const enriched = await enrichTracks(shuffled);
-    mp.enrichedTracks = enriched.slice(0, 13);
+    const ordered  = sortByRecency(enriched, theme.id);
+    mp.enrichedTracks = ordered.slice(0, 13);
     if (mp.enrichedTracks.length < 1) {
       if (loadingText) loadingText.textContent = '⚠️ No previews found — try another theme';
       mp.themeFetching = false;
