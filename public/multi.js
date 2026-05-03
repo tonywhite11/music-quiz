@@ -1,6 +1,25 @@
 /* =========================================================
    Blind Test — Multiplayer Client
    ========================================================= */
+
+// Pick up to `limit` tracks ensuring each artist appears at most once.
+function dedupByArtist(arr, limit) {
+  const seen   = new Set();
+  const picked = [];
+  for (const t of arr) {
+    const key = (t.a || '').toLowerCase().trim();
+    if (!seen.has(key)) { seen.add(key); picked.push(t); }
+    if (picked.length >= limit) break;
+  }
+  if (picked.length < limit) {
+    for (const t of arr) {
+      if (!picked.includes(t)) { picked.push(t); }
+      if (picked.length >= limit) break;
+    }
+  }
+  return picked;
+}
+
 /* ── THEMES (compact set for multiplayer theme picker) ────── */
 const THEMES = [
   { id: 'pop80s',   label: '80s Pop',       emoji: '🎸', tracks: [
@@ -1465,16 +1484,18 @@ async function hostHandleThemeChosen({ themeId }) {
     if (loadingText) loadingText.textContent = `✅ ${mp.enrichedTracks.length} tracks ready!`;
 
     // Sanitise and start
-    hostState.tracks = mp.enrichedTracks
-      .filter(t => t && typeof t.previewUrl === 'string' && t.previewUrl.startsWith('https://'))
-      .map(t => ({
-        a:          String(t.a   || '').slice(0, 100),
-        t:          String(t.t   || '').slice(0, 100),
-        src:        t.src ? String(t.src).slice(0, 100) : undefined,
-        previewUrl: t.previewUrl,
-        cover:      typeof t.cover === 'string' && t.cover.startsWith('https://') ? t.cover : null,
-      }))
-      .slice(0, ROOM_ROUNDS + 3);
+    hostState.tracks = dedupByArtist(
+      mp.enrichedTracks
+        .filter(t => t && typeof t.previewUrl === 'string' && t.previewUrl.startsWith('https://'))
+        .map(t => ({
+          a:          String(t.a   || '').slice(0, 100),
+          t:          String(t.t   || '').slice(0, 100),
+          src:        t.src ? String(t.src).slice(0, 100) : undefined,
+          previewUrl: t.previewUrl,
+          cover:      typeof t.cover === 'string' && t.cover.startsWith('https://') ? t.cover : null,
+        })),
+      ROOM_ROUNDS + 3
+    );
 
     if (hostState.tracks.length < 1) {
       if (loadingText) loadingText.textContent = '⚠️ No valid previews — try another theme';

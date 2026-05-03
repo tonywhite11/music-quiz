@@ -2181,8 +2181,8 @@ async function selectTheme(theme) {
       showPhase("phase-theme");
       return;
     }
-    // Shuffle enriched list so we don't always pick the same "Deezer-friendly" tracks
-    state.tracks = shuffle(enriched).slice(0, TOTAL_ROUNDS);
+    // Shuffle then deduplicate by artist so no artist appears twice in a game
+    state.tracks = dedupByArtist(shuffle(enriched), TOTAL_ROUNDS);
     state.round = 0;
     state.rounds = [];
     state.score = 0;
@@ -2710,6 +2710,26 @@ function formatLbDate(iso) {
   const m = parseInt(parts[1], 10) - 1;
   const d = parseInt(parts[2], 10);
   return `${_MONTHS[m] ?? parts[1]} ${d}`;
+}
+
+// Pick up to `limit` tracks ensuring each artist appears at most once.
+// Falls back to allowing repeats only if there aren't enough unique artists.
+function dedupByArtist(arr, limit) {
+  const seen = new Set();
+  const picked = [];
+  for (const t of arr) {
+    const key = (t.a || '').toLowerCase().trim();
+    if (!seen.has(key)) { seen.add(key); picked.push(t); }
+    if (picked.length >= limit) break;
+  }
+  // Fallback: fill remaining slots from leftovers if we fell short
+  if (picked.length < limit) {
+    for (const t of arr) {
+      if (!picked.includes(t)) { picked.push(t); }
+      if (picked.length >= limit) break;
+    }
+  }
+  return picked;
 }
 
 function shuffle(arr) {

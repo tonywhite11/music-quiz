@@ -58,7 +58,7 @@ app.post('/api/generate-tracks', async (req, res) => {
       messages: [
         {
           role: 'system',
-          content: 'You are a music expert. Generate exactly 12 well-known songs for the given theme. Use the ORIGINAL recording artist (not cover acts, tribute bands, or orchestral arrangers). Return ONLY valid JSON array, no markdown: [{"a":"Artist","t":"Title"}]. No explanation.'
+          content: 'You are a music expert. Generate exactly 12 well-known songs for the given theme. Use the ORIGINAL recording artist (not cover acts, tribute bands, or orchestral arrangers). Every song must be by a DIFFERENT artist — do not repeat any artist. Spread the list across different eras and sub-styles of the theme. Return ONLY valid JSON array, no markdown: [{"a":"Artist","t":"Title"}]. No explanation.'
         },
         { role: 'user', content: `Theme: ${theme}` }
       ],
