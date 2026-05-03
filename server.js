@@ -58,7 +58,7 @@ app.post('/api/generate-tracks', async (req, res) => {
       messages: [
         {
           role: 'system',
-          content: 'You are a music expert. Generate exactly 12 well-known songs for the given theme. Return ONLY valid JSON array, no markdown: [{"a":"Artist","t":"Title"}]. No explanation.'
+          content: 'You are a music expert. Generate exactly 12 well-known songs for the given theme. Use the ORIGINAL recording artist (not cover acts, tribute bands, or orchestral arrangers). Return ONLY valid JSON array, no markdown: [{"a":"Artist","t":"Title"}]. No explanation.'
         },
         { role: 'user', content: `Theme: ${theme}` }
       ],
@@ -129,15 +129,35 @@ app.get('/api/preview-search', async (req, res) => {
   }
 
   try {
-    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=3&country=us`;
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=20&country=us`;
     const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
     if (!r.ok) throw new Error(`iTunes ${r.status}`);
     const data = await r.json();
 
-    // Prefer exact-ish matches: pick the result whose trackName most closely
-    // matches the second half of the query (the title part).
-    const results = data.results || [];
-    const best = results.find(x => x.previewUrl) || null;
+    // Filter out cover/tribute/karaoke/arrangement results
+    const GARBAGE_RE = /karaoke|tribute|cover version|in the style of|made famous|originally performed|piano version|orchestral|symphon|instrumental version|soundtrack version|as made|re-?record|backing track|sing.?along/i;
+    const results = (data.results || []).filter(x => x.previewUrl);
+    const clean   = results.filter(x =>
+      !GARBAGE_RE.test(x.trackName || '') && !GARBAGE_RE.test(x.artistName || '')
+    );
+    // Prefer clean results; fall back to any with a previewUrl if nothing survives
+    const candidates = clean.length ? clean : results;
+
+    // Score: boost when artist name appears in the query (case-insensitive)
+    const qLower = q.toLowerCase();
+    const scored = candidates.map(x => {
+      let score = 0;
+      const artist = (x.artistName || '').toLowerCase();
+      const track  = (x.trackName  || '').toLowerCase();
+      if (qLower.includes(artist)) score += 3;
+      if (artist && artist.split(' ').some(w => w.length > 2 && qLower.includes(w))) score += 1;
+      // Penalise if track name contains extra parenthetical noise like "(Version)", "(Live)", etc.
+      if (/\(.*\)/.test(x.trackName || '')) score -= 1;
+      return { x, score };
+    });
+    scored.sort((a, b) => b.score - a.score);
+    const best = scored[0]?.x || null;
+
     const payload = best ? {
       previewUrl: best.previewUrl,
       cover: (best.artworkUrl100 || '').replace('100x100bb', '300x300bb'),
