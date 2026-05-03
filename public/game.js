@@ -1862,13 +1862,21 @@ function levenshtein(a, b) {
 }
 
 function isCorrect(guess, answer) {
-  const ng = normalize(guess), na = normalize(answer);
+  // Strip parenthetical suffixes from the answer so e.g. "Love Is All Around" matches
+  // "Love Is All Around (Mary Tyler Moore Theme)"
+  const stripParens = s => s.replace(/\s*\(.*\)\s*$/, '').trim();
+  const ng  = normalize(guess);
+  const na  = normalize(answer);
+  const nas = normalize(stripParens(answer)); // answer without parenthetical
   if (!ng || !na) return false;
-  if (ng === na) return true;
-  if (na.length >= 4 && ng.includes(na)) return true;
-  if (na.length >= 4 && na.includes(ng) && ng.length >= Math.floor(na.length * 0.6)) return true;
-  const tol = na.length <= 5 ? 1 : na.length <= 10 ? 2 : 3;
-  return levenshtein(ng, na) <= tol;
+  for (const target of [na, nas]) {
+    if (ng === target) return true;
+    if (target.length >= 4 && ng.includes(target)) return true;
+    if (target.length >= 4 && target.includes(ng) && ng.length >= Math.floor(target.length * 0.6)) return true;
+    const tol = target.length <= 5 ? 1 : target.length <= 10 ? 2 : 3;
+    if (levenshtein(ng, target) <= tol) return true;
+  }
+  return false;
 }
 
 /* ── Scoring ─────────────────────────────────────────────── */

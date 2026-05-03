@@ -1028,13 +1028,19 @@ function lev(a, b) {
   return dp[m][n];
 }
 function answerOk(guess, answer) {
-  const g = norm(guess), a = norm(answer);
+  const stripParens = s => s.replace(/\s*\(.*\)\s*$/, '').trim();
+  const g  = norm(guess);
+  const a  = norm(answer);
+  const as = norm(stripParens(answer));
   if (!g || !a) return false;
-  if (g === a) return true;
-  if (a.length >= 4 && g.includes(a)) return true;
-  if (a.length >= 4 && a.includes(g) && g.length >= Math.floor(a.length * 0.6)) return true;
-  const tol = a.length <= 5 ? 1 : a.length <= 10 ? 2 : 3;
-  return lev(g, a) <= tol;
+  for (const target of [a, as]) {
+    if (g === target) return true;
+    if (target.length >= 4 && g.includes(target)) return true;
+    if (target.length >= 4 && target.includes(g) && g.length >= Math.floor(target.length * 0.6)) return true;
+    const tol = target.length <= 5 ? 1 : target.length <= 10 ? 2 : 3;
+    if (lev(g, target) <= tol) return true;
+  }
+  return false;
 }
 function speedBonus(elapsed) {
   return elapsed <= 10 ? 20 : elapsed <= 20 ? 10 : elapsed <= 25 ? 5 : 0;
