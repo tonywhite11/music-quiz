@@ -233,6 +233,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 2px 0;
 }
 .round-label {
@@ -1273,6 +1274,14 @@
   margin-top: 8px;
   width: 100%;
   padding: 0 2px;
+}
+.volume-wrap--inline {
+  margin-top: 0;
+  width: auto;
+  flex-shrink: 0;
+}
+.volume-wrap--inline .vol-slider {
+  width: clamp(60px, 12vw, 110px);
 }
 .vol-icon { font-size: 18px; line-height: 1; flex-shrink: 0; }
 .vol-slider {

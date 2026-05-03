@@ -154,6 +154,11 @@
           <div class="round-bar">
             <span id="round-label" class="round-label">Round 1 / 10</span>
             <span id="playing-theme" class="playing-theme-tag">Theme</span>
+            <div class="volume-wrap volume-wrap--inline">
+              <span class="vol-icon" aria-hidden="true">🔊</span>
+              <input id="volume-slider" type="range" class="vol-slider"
+                min="0" max="200" value="100" step="1" aria-label="Volume" />
+            </div>
           </div>
 
           <!-- Visualizer + timer -->
@@ -215,13 +220,6 @@
 
           <!-- Skip — shown in both modes -->
           <button id="skip-btn" class="btn btn-ghost skip-btn">Skip</button>
-
-          <!-- Volume -->
-          <div class="volume-wrap">
-            <span class="vol-icon" aria-hidden="true">🔊</span>
-            <input id="volume-slider" type="range" class="vol-slider"
-              min="0" max="200" value="100" step="1" aria-label="Volume" />
-          </div>
 
           <!-- Progress dots -->
           <div id="progress-dots" class="progress-dots"></div>
