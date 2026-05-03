@@ -134,7 +134,7 @@ const THEMES = [
     {a:'BLACKPINK',t:'Kill This Love'},{a:'TWICE',t:'Fancy'},
     {a:'aespa',t:'Black Mamba'},{a:'NCT 127',t:'Cherry Bomb'},
   ]},
-  { id: 'disney',   label: 'Disney',        emoji: '✨', artistLabel:'Movie', tracks: [
+  { id: 'disney',   label: 'Disney',        emoji: '✨', artistLabel:'Movie', answerMode: 'title-only', singleLabel: 'Song or Movie', tracks: [
     {a:'Idina Menzel',t:'Let It Go',src:'Frozen'},
     {a:'Elton John',t:'Circle of Life',src:'The Lion King'},
     {a:'Celine Dion',t:'Beauty and the Beast',src:'Beauty and the Beast'},
@@ -154,7 +154,7 @@ const THEMES = [
     {a:'Jodi Benson',t:'Part of Your World',src:'The Little Mermaid'},
     {a:'Susan Egan',t:'Go the Distance',src:'Hercules'},
   ]},
-  { id: 'anime',    label: 'Anime',         emoji: '⛩️', artistLabel:'Anime', tracks: [
+  { id: 'anime',    label: 'Anime',         emoji: '⛩️', artistLabel:'Anime', answerMode: 'title-only', singleLabel: 'Anime / Show', tracks: [
     {a:'Linked Horizon',t:'Guren no Yumiya',src:'Attack on Titan'},
     {a:'LiSA',t:'Gurenge',src:'Demon Slayer'},
     {a:'LiSA',t:'Crossing Field',src:'Sword Art Online'},
@@ -174,7 +174,7 @@ const THEMES = [
     {a:'FLOW',t:'Days',src:'Eureka Seven'},
     {a:'Kalafina',t:'Oath Sign',src:'Fate/Zero'},
   ]},
-  { id: 'videogames',label:'Video Games',   emoji: '🎮', artistLabel:'Game', tracks: [
+  { id: 'videogames',label:'Video Games',   emoji: '🎮', artistLabel:'Game', answerMode: 'title-only', singleLabel: 'Game Name', tracks: [
     {a:'Koji Kondo',t:'Super Mario Bros Theme',src:'Super Mario Bros'},
     {a:'Toby Fox',t:'Megalovania',src:'Undertale'},
     {a:'C418',t:'Sweden',src:'Minecraft'},
@@ -193,7 +193,7 @@ const THEMES = [
     {a:'Koji Kondo',t:"Zelda's Lullaby",src:'Zelda Ocarina of Time'},
     {a:'Yasunori Mitsuda',t:'Chrono Trigger Main Theme',src:'Chrono Trigger'},
   ]},
-  { id: 'films',    label: 'Films',         emoji: '🎬', artistLabel:'Movie', tracks: [
+  { id: 'films',    label: 'Films',         emoji: '🎬', artistLabel:'Movie', answerMode: 'title-only', singleLabel: 'Movie Title', tracks: [
     {a:'John Williams',t:'The Imperial March',src:'Star Wars'},
     {a:'Hans Zimmer',t:'Time',src:'Inception'},
     {a:'Ennio Morricone',t:'The Good the Bad and the Ugly',src:'The Good the Bad and the Ugly'},
@@ -226,7 +226,7 @@ const THEMES = [
     {a:'Nina Simone',t:'I Put a Spell on You'},{a:'Chet Baker',t:'Almost Blue'},
     {a:'Miles Davis',t:'Kind of Blue'},
   ]},
-  { id: 'classical',label: 'Classical',     emoji: '🎻', tracks: [
+  { id: 'classical',label: 'Classical',     emoji: '🎻', answerMode: 'title-only', singleLabel: 'Piece Name', tracks: [
     {a:'Beethoven',t:'Für Elise'},{a:'Mozart',t:'Eine kleine Nachtmusik'},
     {a:'Bach',t:'Toccata and Fugue in D minor'},{a:'Vivaldi',t:'Spring'},
     {a:'Chopin',t:'Nocturne Op. 9 No. 2'},{a:'Debussy',t:'Clair de lune'},
@@ -502,7 +502,7 @@ const THEMES = [
     {a:'Joe Bonamassa',t:'Sloe Gin'},{a:'Robert Cray',t:'Smoking Gun'},
     {a:'Taj Mahal',t:"Fishin' Blues"},{a:'Keb Mo',t:'Am I Wrong'},
   ]},
-  { id: 'musicals', label: 'Musicals',         emoji: '🎭', tracks: [
+  { id: 'musicals', label: 'Musicals',         emoji: '🎭', answerMode: 'title-only', singleLabel: 'Song or Musical', tracks: [
     {a:'Original Broadway Cast',t:'My Shot'},{a:'Les Misérables Original Cast',t:'I Dreamed a Dream'},
     {a:'Wicked Original Cast',t:'Defying Gravity'},{a:'Grease Original Soundtrack',t:'Summer Nights'},
     {a:'Mamma Mia Original Cast',t:'Dancing Queen'},
@@ -519,7 +519,7 @@ const THEMES = [
     {a:'Moulin Rouge Broadway Cast',t:'Come What May'},
     {a:'Cabaret Original Cast',t:'Cabaret'},
   ]},
-  { id: 'tvthemes_classic',label:'Classic TV Themes',emoji:'📺', artistLabel:'Show', tracks: [
+  { id: 'tvthemes_classic',label:'Classic TV Themes',emoji:'📺', artistLabel:'Show', answerMode: 'title-only', singleLabel: 'Show Name', tracks: [
     {a:'Neal Hefti',t:'Batman Theme'},{a:'Sherwood Schwartz',t:"Gilligan's Island Theme"},
     {a:'Vic Mizzy',t:'Get Smart Theme'},{a:'Earle Hagen',t:'The Andy Griffith Show Theme'},
     {a:'Vic Mizzy',t:'The Addams Family Theme'},{a:'George Tipton',t:'The Munsters Theme'},
@@ -532,7 +532,7 @@ const THEMES = [
     {a:'Mike Post',t:'The A-Team Theme'},{a:'Stu Phillips',t:'Knight Rider Theme'},
     {a:'John Barry',t:'The Persuaders Theme'},
   ]},
-  { id: 'tvthemes_modern',label:'Modern TV Themes',emoji:'🖥️', artistLabel:'Show', tracks: [
+  { id: 'tvthemes_modern',label:'Modern TV Themes',emoji:'🖥️', artistLabel:'Show', answerMode: 'title-only', singleLabel: 'Show Name', tracks: [
     {a:'The Rembrandts',t:"I'll Be There for You (Friends Theme)"},
     {a:'Mark Snow',t:'The X-Files Theme'},
     {a:'Angelo Badalamenti',t:'Twin Peaks Theme'},
@@ -743,11 +743,41 @@ function resetVoiceChips() {
   if (tc) { tc.textContent = '🎤 Title';  tc.classList.remove('found'); }
 }
 
+function configureAnswerMode() {
+  const theme      = mp.theme || {};
+  const mode       = theme.answerMode || 'both';
+  const singleLabel = theme.singleLabel || 'Song Title';
+  const artistGroup = document.getElementById('mp-artist-group');
+  const titleLbl    = document.querySelector('label[for="mp-title-input"]');
+  const artistChip  = document.getElementById('mp-artist-chip');
+  const titleChip   = document.getElementById('mp-title-chip');
+  const hintText    = document.querySelector('#mp-voice-chips .ai-play-hint-text');
+  if (mode === 'title-only') {
+    if (artistGroup) artistGroup.style.display = 'none';
+    if (titleLbl)   titleLbl.textContent = singleLabel;
+    if (artistChip) artistChip.style.display = 'none';
+    if (titleChip)  { titleChip.textContent = `🎤 ${singleLabel}`; titleChip.classList.remove('found'); }
+    if (hintText)   hintText.textContent = `Say the ${singleLabel.toLowerCase()}`;
+  } else {
+    if (artistGroup) artistGroup.style.display = '';
+    if (titleLbl)   titleLbl.textContent = 'Title';
+    if (artistChip) { artistChip.style.display = ''; artistChip.textContent = '🎤 Artist'; }
+    if (titleChip)  titleChip.textContent = '🎤 Title';
+    if (hintText)   hintText.textContent = 'Say the artist name, or the song title';
+  }
+}
+
 function updateVoiceChips() {
+  const mode        = mp.theme?.answerMode || 'both';
+  const singleLabel = mp.theme?.singleLabel || 'Song Title';
   const ac = document.getElementById('mp-artist-chip');
   const tc = document.getElementById('mp-title-chip');
-  if (ac) { ac.textContent = _mpArtistFound ? '✅ Artist' : '🎤 Artist'; ac.classList.toggle('found', _mpArtistFound); }
-  if (tc) { tc.textContent = _mpTitleFound  ? '✅ Title'  : '🎤 Title';  tc.classList.toggle('found', _mpTitleFound); }
+  if (mode === 'title-only') {
+    if (tc) { tc.textContent = _mpTitleFound ? `✅ ${singleLabel}` : `🎤 ${singleLabel}`; tc.classList.toggle('found', _mpTitleFound); }
+  } else {
+    if (ac) { ac.textContent = _mpArtistFound ? '✅ Artist' : '🎤 Artist'; ac.classList.toggle('found', _mpArtistFound); }
+    if (tc) { tc.textContent = _mpTitleFound  ? '✅ Title'  : '🎤 Title';  tc.classList.toggle('found', _mpTitleFound); }
+  }
 }
 
 function showMicCenter(show) {
@@ -803,7 +833,8 @@ function startMicAnswer() {
     }
     const heard = (final || interim).trim();
     if (heard) onMicSpeech(heard, e.results[e.resultIndex]);
-    if (final && _mpArtistFound && _mpTitleFound) {
+    const mode = mp.theme?.answerMode || 'both';
+    if (final && (mode === 'title-only' ? _mpTitleFound : (_mpArtistFound && _mpTitleFound))) {
       stopMicAnswer();
       autoSubmitAfterVoice();
     }
@@ -871,8 +902,14 @@ function setMpMicState(s) {
         setMpMicState('listening');
         const lbl = document.getElementById('mp-mic-center-label');
         if (lbl) {
-          if (_mpArtistFound && !_mpTitleFound)  lbl.textContent = 'Now say the title! 🎵';
-          else if (_mpTitleFound && !_mpArtistFound) lbl.textContent = 'Now say the artist! 🎤';
+          const mode = mp.theme?.answerMode || 'both';
+          if (mode === 'title-only') {
+            lbl.textContent = `Say the ${mp.theme?.singleLabel?.toLowerCase() || 'answer'}!`;
+          } else if (_mpArtistFound && !_mpTitleFound) {
+            lbl.textContent = 'Now say the title! 🎵';
+          } else if (_mpTitleFound && !_mpArtistFound) {
+            lbl.textContent = 'Now say the artist! 🎤';
+          }
         }
       }
     }, 1200);
@@ -894,6 +931,24 @@ function onMicSpeech(transcript, resultItem) {
     for (let i = 1; i < resultItem.length; i++) {
       candidates.push(resultItem[i].transcript);
     }
+  }
+
+  const mode = mp.theme?.answerMode || 'both';
+
+  if (mode === 'title-only') {
+    // Single field — accept src (movie/game/show) OR track title
+    if (_mpTitleFound) return;
+    const singleOk = candidates.some(c =>
+      answerOk(c, track.src ?? track.t) || !!(track.src && answerOk(c, track.t))
+    );
+    if (!singleOk) { setMpMicState('wrong'); return; }
+    _mpTitleFound = true;
+    document.getElementById('mp-title-input').value = track.src ?? track.t;
+    updateVoiceChips();
+    setMpMicState('correct');
+    stopMicAnswer();
+    setTimeout(() => autoSubmitAfterVoice(), 700);
+    return;
   }
 
   const newArtistOk = !_mpArtistFound && candidates.some(c => answerOk(c, track.a));
@@ -1099,11 +1154,20 @@ function hostHandleAnswer({ playerId, artist, title }) {
   if (hostState.roundAnswers.has(playerId)) return;
   const tr = hostState.tracks[hostState.round];
   if (!tr) return;
-  const elapsed  = (Date.now() - hostState.roundStartTime) / 1000;
-  const artistOk = answerOk(artist,  tr.src ?? tr.a);
-  const titleOk  = answerOk(title,   tr.t);
-  const bonus    = (artistOk || titleOk) ? speedBonus(elapsed) : 0;
-  const pts      = (artistOk ? 100 : 0) + (titleOk ? 100 : 0) + bonus;
+  const elapsed = (Date.now() - hostState.roundStartTime) / 1000;
+  const mode    = hostState.currentTheme?.answerMode || 'both';
+  let artistOk, titleOk, pts;
+  if (mode === 'title-only') {
+    // Single answer field — accept either src (movie/game/show) or track title
+    titleOk  = answerOk(title, tr.src ?? tr.t) || !!(tr.src && answerOk(title, tr.t));
+    artistOk = false;
+    pts      = (titleOk ? 100 : 0) + (titleOk ? speedBonus(elapsed) : 0);
+  } else {
+    artistOk = answerOk(artist,  tr.src ?? tr.a);
+    titleOk  = answerOk(title,   tr.t);
+    const bonus = (artistOk || titleOk) ? speedBonus(elapsed) : 0;
+    pts = (artistOk ? 100 : 0) + (titleOk ? 100 : 0) + bonus;
+  }
   hostState.roundAnswers.set(playerId, { artistOk, titleOk, pts });
   const player = hostState.players.get(playerId);
   if (player) player.score += pts;
@@ -1173,7 +1237,9 @@ function hostEndRound() {
   });
   const payload = {
     round:         hostState.round + 1,
-    correctArtist: tr.src ?? tr.a,
+    correctArtist: hostState.currentTheme?.answerMode === 'title-only'
+                     ? (tr.src ?? tr.t)   // the single correct answer (source or title)
+                     : (tr.src ?? tr.a),
     correctTitle:  tr.t,
     cover:         tr.cover || null,
     results,
@@ -1353,6 +1419,7 @@ async function hostHandleThemeChosen({ themeId }) {
   if (!mp.isHost) return;
   const theme = THEMES.find(t => t.id === themeId);
   if (!theme) return;
+  hostState.currentTheme = theme;
 
   const loadingDiv  = document.getElementById('theme-loading');
   const loadingText = document.getElementById('theme-loading-text');
@@ -1496,15 +1563,18 @@ function renderRevealScores(scores) {
 }
 
 /* ── Round results ───────────────────────────────────────── */
-function renderRoundResults(results) {
+function renderRoundResults(results, mode) {
   const list = document.getElementById('round-results-list');
   list.innerHTML = results.map(p => `
     <div class="round-result-row">
       <span>${p.avatar}</span>
       <span class="rr-name">${escHtml(p.name)}</span>
       <span class="rr-checks">
-        <span title="Artist">${p.artistOk ? '✅' : '❌'}</span>
-        <span title="Title">${p.titleOk ? '✅' : '❌'}</span>
+        ${mode === 'title-only'
+          ? `<span title="Answer">${p.titleOk ? '✅' : '❌'}</span>`
+          : `<span title="Artist">${p.artistOk ? '✅' : '❌'}</span>
+             <span title="Title">${p.titleOk ? '✅' : '❌'}</span>`
+        }
       </span>
       <span class="rr-pts">${p.pts > 0 ? '+' + p.pts : '0'} pts</span>
     </div>
@@ -1560,7 +1630,7 @@ function onGameStart({ themeId, themeLabel, themeEmoji, totalRounds }) {
   mp.totalRounds = totalRounds;
   mp.round       = 0;
   mp.submitted   = false;
-  mp.theme = { id: themeId, label: themeLabel, emoji: themeEmoji };
+  mp.theme = THEMES.find(t => t.id === themeId) || { id: themeId, label: themeLabel, emoji: themeEmoji };
   document.getElementById('mp-theme-tag').textContent = `${themeEmoji} ${themeLabel}`;
   document.getElementById('loading-phase-text').textContent = `${themeEmoji} ${themeLabel} — Get ready!`;
   showPhase('phase-loading');
@@ -1574,12 +1644,16 @@ function onRoundStart({ round, total, previewUrl, startedAt }) {
   document.getElementById('mp-title-input').value  = '';
   document.getElementById('mp-artist-check').textContent = '';
   document.getElementById('mp-title-check').textContent  = '';
+  // Reset reveal artist element visibility (may be hidden from previous title-only round)
+  const artistReveal = document.getElementById('mp-correct-artist');
+  if (artistReveal) artistReveal.style.display = '';
   document.getElementById('mp-answer-area').style.display = 'block';
   document.getElementById('mp-answered-banner').style.display = 'none';
   document.getElementById('mp-replay-banner').style.display = 'none';
   document.getElementById('mp-round-label').textContent = `Round ${round} / ${total}`;
   document.getElementById('mp-skip-btn').style.display = mp.isHost ? 'block' : 'none';
   resetVoiceChips();
+  configureAnswerMode();
   timerStart(startedAt);
   playPreview(previewUrl);
   renderLiveScores(mp.players.map(p => ({ ...p })), new Set());
@@ -1600,6 +1674,7 @@ function onReplayMusic({ previewUrl, startedAt }) {
   const replayBanner = document.getElementById('mp-replay-banner');
   if (replayBanner) { replayBanner.style.display = 'block'; }
   resetVoiceChips();
+  configureAnswerMode();
   stopMicAnswer();
   timerStart(startedAt);
   playPreview(previewUrl);
@@ -1613,8 +1688,14 @@ function onAnswerResult({ forId, artistOk, titleOk, pts }) {
   mp.myResult  = { artistOk, titleOk, pts };
   mp.submitted = true;
   stopMicAnswer();
-  document.getElementById('mp-artist-check').textContent = artistOk ? '✅' : '❌';
-  document.getElementById('mp-title-check').textContent  = titleOk  ? '✅' : '❌';
+  const mode = mp.theme?.answerMode || 'both';
+  if (mode === 'title-only') {
+    document.getElementById('mp-artist-check').textContent = '';
+    document.getElementById('mp-title-check').textContent  = titleOk ? '✅' : '❌';
+  } else {
+    document.getElementById('mp-artist-check').textContent = artistOk ? '✅' : '❌';
+    document.getElementById('mp-title-check').textContent  = titleOk  ? '✅' : '❌';
+  }
   document.getElementById('mp-answer-area').style.display = 'none';
   document.getElementById('mp-answered-banner').style.display = 'block';
   document.getElementById('mp-answered-banner').innerHTML =
@@ -1645,9 +1726,20 @@ function onRoundEnd({ round, correctArtist, correctTitle, cover, results, scores
     coverImg.style.display  = 'none';
     coverPlac.style.display = 'flex';
   }
-  document.getElementById('mp-correct-artist').textContent = correctArtist;
-  document.getElementById('mp-correct-title').textContent  = correctTitle;
-  renderRoundResults(results);
+  const revealMode = mp.theme?.answerMode || 'both';
+  const artistEl = document.getElementById('mp-correct-artist');
+  if (revealMode === 'title-only') {
+    // correctArtist = single answer (src ?? t); show "Source — Track Title" if they differ
+    if (artistEl) artistEl.style.display = 'none';
+    const mainAnswer = correctArtist || correctTitle;
+    const extraInfo  = (correctArtist && correctTitle && correctArtist !== correctTitle)
+      ? ` \u2014 ${correctTitle}` : '';
+    document.getElementById('mp-correct-title').textContent = mainAnswer + extraInfo;
+  } else {
+    if (artistEl) { artistEl.style.display = ''; artistEl.textContent = correctArtist; }
+    document.getElementById('mp-correct-title').textContent  = correctTitle;
+  }
+  renderRoundResults(results, revealMode);
   renderRevealScores(scores);
   const nextBtn = document.getElementById('mp-next-btn');
   const autoMsg = document.getElementById('auto-advance-msg');

@@ -139,7 +139,7 @@ const THEMES = [
     { a: "Joe",              t: "All That I Am" },
     { a: "Faith Evans",      t: "Love Like This" },
   ]},
-  { id: "disney",   label: "Disney",        emoji: "✨", bpm: 110, artistLabel: "Movie", artistPlaceholder: "Which movie?", tracks: [
+  { id: "disney",   label: "Disney",        emoji: "✨", bpm: 110, artistLabel: "Movie", artistPlaceholder: "Which movie?", answerMode: "title-only", singleLabel: "Song or Movie", tracks: [
     { a: "Idina Menzel",       t: "Let It Go",                  src: "Frozen" },
     { a: "Elton John",         t: "Circle of Life",             src: "The Lion King" },
     { a: "Celine Dion",        t: "Beauty and the Beast",       src: "Beauty and the Beast" },
@@ -359,7 +359,7 @@ const THEMES = [
     { a: "Bullet for My Valentine", t: "Tears Don't Fall" },
     { a: "Trivium",          t: "Pull Harder on the Strings" },
   ]},
-  { id: "anime",    label: "Anime",         emoji: "⛩️", bpm: 128, artistLabel: "Anime", artistPlaceholder: "Which anime?", tracks: [
+  { id: "anime",    label: "Anime",         emoji: "⛩️", bpm: 128, artistLabel: "Anime", artistPlaceholder: "Which anime?", answerMode: "title-only", singleLabel: "Anime / Show", tracks: [
     { a: "Hironobu Kageyama",        t: "CHA-LA HEAD-CHA-LA",    src: "Dragon Ball Z" },
     { a: "Ikimono-gakari",           t: "Blue Bird",             src: "Naruto Shippuden" },
     { a: "Linked Horizon",           t: "Guren no Yumiya",       src: "Attack on Titan" },
@@ -407,7 +407,7 @@ const THEMES = [
     { a: "Nina Simone",      t: "I Put a Spell on You" },
     { a: "Miles Davis",      t: "Kind of Blue" },
   ]},
-  { id: "videogames", label: "Jeux Vidéo", emoji: "🎮", bpm: 140, artistLabel: "Game", artistPlaceholder: "Which game?", tracks: [
+  { id: "videogames", label: "Jeux Vidéo", emoji: "🎮", bpm: 140, artistLabel: "Game", artistPlaceholder: "Which game?", answerMode: "title-only", singleLabel: "Game Name", tracks: [
     { a: "Koji Kondo",       t: "Super Mario Bros Theme",    src: "Super Mario Bros" },
     { a: "Toby Fox",         t: "Megalovania",               src: "Undertale" },
     { a: "C418",             t: "Sweden",                    src: "Minecraft" },
@@ -431,7 +431,7 @@ const THEMES = [
     { a: "Martin O'Donnell", t: "Mjolnir Mix",               src: "Halo 2" },
     { a: "Akira Yamaoka",    t: "Promise",                   src: "Silent Hill 2" },
   ]},
-  { id: "films",    label: "Films",         emoji: "🎬", bpm: 100, artistLabel: "Movie", artistPlaceholder: "Which movie?", tracks: [
+  { id: "films",    label: "Films",         emoji: "🎬", bpm: 100, artistLabel: "Movie", artistPlaceholder: "Which movie?", answerMode: "title-only", singleLabel: "Movie Title", tracks: [
     { a: "John Williams",    t: "The Imperial March",             src: "Star Wars" },
     { a: "Hans Zimmer",      t: "Time",                           src: "Inception" },
     { a: "Ennio Morricone",  t: "The Good the Bad and the Ugly",  src: "The Good the Bad and the Ugly" },
@@ -708,7 +708,7 @@ const THEMES = [
     { a: "Wizkid",           t: "Come Closer" },
     { a: "Yemi Alade",       t: "Shake" },
   ]},
-  { id: "classical", label: "Classical",     emoji: "🎻", bpm: 80, tracks: [
+  { id: "classical", label: "Classical",     emoji: "🎻", bpm: 80, answerMode: "title-only", singleLabel: "Piece Name", tracks: [
     { a: "Beethoven",        t: "Für Elise" },
     { a: "Mozart",           t: "Eine kleine Nachtmusik" },
     { a: "Bach",             t: "Toccata and Fugue in D minor" },
@@ -1071,7 +1071,7 @@ const THEMES = [
     { a: "Taj Mahal",         t: "Fishin' Blues" },
     { a: "Robert Cray",       t: "Smoking Gun" },
   ]},
-  { id: "musicals", label: "Musicals",           emoji: "🎭", bpm: 112, tracks: [
+  { id: "musicals", label: "Musicals",           emoji: "🎭", bpm: 112, answerMode: "title-only", singleLabel: "Song or Musical", tracks: [
     { a: "Original Broadway Cast", t: "Hamilton" },
     { a: "Les Misérables Original Cast", t: "I Dreamed a Dream" },
     { a: "Wicked Original Cast", t: "Defying Gravity" },
@@ -1093,7 +1093,7 @@ const THEMES = [
     { a: "La La Land Soundtrack", t: "City of Stars" },
     { a: "Moulin Rouge Broadway Cast", t: "Come What May" },
   ]},
-  { id: "tvthemes_classic", label: "Classic TV Themes", emoji: "📺", bpm: 100, artistLabel: "Show", artistPlaceholder: "Which TV show?", tracks: [
+  { id: "tvthemes_classic", label: "Classic TV Themes", emoji: "📺", bpm: 100, artistLabel: "Show", artistPlaceholder: "Which TV show?", answerMode: "title-only", singleLabel: "Show Name", tracks: [
     { a: "Neal Hefti",        t: "Batman Theme" },
     { a: "Sherwood Schwartz", t: "Gilligan's Island Theme" },
     { a: "Vic Mizzy",         t: "Get Smart Theme" },
@@ -1115,7 +1115,7 @@ const THEMES = [
     { a: "Johnny Harris",     t: "Danger Man Theme" },
     { a: "John Barry",        t: "The Persuaders Theme" },
   ]},
-  { id: "tvthemes_modern", label: "Modern TV Themes",  emoji: "🖥️", bpm: 108, artistLabel: "Show", artistPlaceholder: "Which TV show?", tracks: [
+  { id: "tvthemes_modern", label: "Modern TV Themes",  emoji: "🖥️", bpm: 108, artistLabel: "Show", artistPlaceholder: "Which TV show?", answerMode: "title-only", singleLabel: "Show Name", tracks: [
     { a: "The Rembrandts",    t: "I'll Be There for You (Friends Theme)" },
     { a: "Mark Snow",         t: "The X-Files Theme" },
     { a: "Angelo Badalamenti", t: "Twin Peaks Theme" },
@@ -1740,6 +1740,23 @@ function onAnswerSpeech(transcript) {
   const track = state.tracks[state.round];
   if (!track || state.submitted) return;
 
+  const answerMode = state.theme?.answerMode || 'both';
+
+  if (answerMode === 'title-only') {
+    if (state.aiTitleFound) return;
+    const singleOk = isCorrect(transcript, track.src ?? track.t)
+                  || !!(track.src && isCorrect(transcript, track.t));
+    if (!singleOk) { setAIMicState("wrong"); robotReact(false, true); return; }
+    state.aiTitleFound = true;
+    document.getElementById("title-input").value = track.src ?? track.t;
+    updateAIVoiceStatus();
+    robotReact(true, true);
+    setAIMicState("correct");
+    stopListening();
+    setTimeout(() => submitAnswer(), 800);
+    return;
+  }
+
   const artistAnswer = track.src ?? track.a;
 
   // Only check fields not yet confirmed this round
@@ -1784,15 +1801,27 @@ function onAnswerSpeech(transcript) {
 }
 
 function updateAIVoiceStatus() {
+  const answerMode = state.theme?.answerMode || 'both';
   const artistChip = document.getElementById("ai-artist-status");
   const titleChip  = document.getElementById("ai-title-status");
-  if (artistChip) {
-    artistChip.textContent = state.aiArtistFound ? "✅ Artist" : "🎤 Artist";
-    artistChip.classList.toggle("found", state.aiArtistFound);
-  }
-  if (titleChip) {
-    titleChip.textContent = state.aiTitleFound ? "✅ Title" : "🎤 Title";
-    titleChip.classList.toggle("found", state.aiTitleFound);
+  if (answerMode === 'title-only') {
+    const label = state.theme?.singleLabel || 'Song Title';
+    if (artistChip) artistChip.style.display = 'none';
+    if (titleChip) {
+      titleChip.style.display = '';
+      titleChip.textContent = state.aiTitleFound ? `\u2705 ${label}` : `\ud83c\udfa4 ${label}`;
+      titleChip.classList.toggle("found", state.aiTitleFound);
+    }
+  } else {
+    if (artistChip) {
+      artistChip.style.display = '';
+      artistChip.textContent = state.aiArtistFound ? "\u2705 Artist" : "\ud83c\udfa4 Artist";
+      artistChip.classList.toggle("found", state.aiArtistFound);
+    }
+    if (titleChip) {
+      titleChip.textContent = state.aiTitleFound ? "\u2705 Title" : "\ud83c\udfa4 Title";
+      titleChip.classList.toggle("found", state.aiTitleFound);
+    }
   }
 }
 
@@ -2170,14 +2199,33 @@ function startRound() {
   document.getElementById("title-check").textContent = "";
   document.getElementById("artist-input").className = "answer-input";
   document.getElementById("title-input").className = "answer-input";
+  // Reset reveal artist row visibility (may have been hidden in title-only mode)
+  const artistRevealRowReset = document.querySelector('.score-row:first-child');
+  if (artistRevealRowReset) artistRevealRowReset.style.display = '';
 
   document.getElementById("round-label").textContent = `Round ${state.round + 1} / ${TOTAL_ROUNDS}`;
 
-  // Dynamic artist label (free mode)
-  const artistLabel = state.theme?.artistLabel ?? "Artist";
-  const artistPlaceholder = state.theme?.artistPlaceholder ?? "Who?";
-  document.querySelector('label[for="artist-input"]').textContent = artistLabel;
-  document.getElementById("artist-input").placeholder = artistPlaceholder;
+  // Configure input fields based on answerMode
+  const answerMode  = state.theme?.answerMode || 'both';
+  const artistGroup = document.getElementById('artist-group');
+  const titleLblEl  = document.querySelector('label[for="title-input"]');
+  if (answerMode === 'title-only') {
+    const singleLabel = state.theme?.singleLabel || 'Song Title';
+    if (artistGroup) artistGroup.style.display = 'none';
+    if (titleLblEl)  titleLblEl.textContent = singleLabel;
+    document.getElementById("title-input").placeholder = singleLabel + '?';
+    if (hintArtist) hintArtist.style.display = 'none';
+  } else {
+    // Dynamic artist label (free mode)
+    const artistLabel       = state.theme?.artistLabel ?? "Artist";
+    const artistPlaceholder = state.theme?.artistPlaceholder ?? "Who?";
+    if (artistGroup) artistGroup.style.display = '';
+    document.querySelector('label[for="artist-input"]').textContent = artistLabel;
+    document.getElementById("artist-input").placeholder = artistPlaceholder;
+    if (titleLblEl) titleLblEl.textContent = 'Title';
+    document.getElementById("title-input").placeholder = 'What song?';
+    if (hintArtist) hintArtist.style.display = '';
+  }
 
   if (state.mode === "openai") {
     // AI mode: mic in centre, voice status chips, no text inputs
@@ -2208,7 +2256,10 @@ function startRound() {
   timerStart();
 
   if (state.mode !== "openai") {
-    document.getElementById("artist-input").focus();
+    const focusEl = answerMode === 'title-only'
+      ? document.getElementById("title-input")
+      : document.getElementById("artist-input");
+    if (focusEl) focusEl.focus();
   }
 }
 
@@ -2248,10 +2299,22 @@ function submitAnswer(timedOut = false) {
   const artistGuess = document.getElementById("artist-input").value.trim();
   const titleGuess  = document.getElementById("title-input").value.trim();
 
-  const artistOk = isCorrect(artistGuess, track.src ?? track.a);
-  const titleOk  = isCorrect(titleGuess,  track.t);
-  const bonus    = (artistOk || titleOk) ? timeBonus(elapsed) : 0;
-  const baseRound = (artistOk ? 50 : 0) + (titleOk ? 50 : 0) + bonus;
+  const answerMode = state.theme?.answerMode || 'both';
+  let artistOk, titleOk, bonus, baseRound;
+  if (answerMode === 'title-only') {
+    // Single answer in title field — accept src (movie/game/show) OR track title
+    const singleOk = isCorrect(titleGuess, track.src ?? track.t)
+                  || !!(track.src && isCorrect(titleGuess, track.t));
+    artistOk  = false;
+    titleOk   = !!singleOk;
+    bonus     = titleOk ? timeBonus(elapsed) : 0;
+    baseRound = (titleOk ? 100 : 0) + bonus;
+  } else {
+    artistOk  = isCorrect(artistGuess, track.src ?? track.a);
+    titleOk   = isCorrect(titleGuess, track.t);
+    bonus     = (artistOk || titleOk) ? timeBonus(elapsed) : 0;
+    baseRound = (artistOk ? 50 : 0) + (titleOk ? 50 : 0) + bonus;
+  }
 
   // Combo streak
   const anyCorrect = artistOk || titleOk;
@@ -2288,15 +2351,30 @@ function submitAnswer(timedOut = false) {
 /* ── Reveal ─────────────────────────────────────────────── */
 function showReveal(track, artistOk, titleOk, bonus, pts, comboMult = 1.0) {
   document.getElementById("album-cover").src = track.cover || "";
-  document.getElementById("reveal-artist").textContent = track.src ?? track.a;
-  document.getElementById("reveal-title").textContent  = track.t;
-  document.getElementById("artist-result").textContent = artistOk ? "✅" : "❌";
-  document.getElementById("title-result").textContent  = titleOk  ? "✅" : "❌";
-  document.getElementById("artist-pts").textContent = artistOk ? "50 pts" : "0 pts";
-  document.getElementById("title-pts").textContent  = titleOk  ? "50 pts" : "0 pts";
-  // Sync reveal label to theme type
-  document.querySelector(".score-row:first-child .score-row-label").textContent =
-    state.theme?.artistLabel ?? "Artist";
+  const answerMode = state.theme?.answerMode || 'both';
+  const artistRevealRow = document.querySelector(".score-row:first-child");
+
+  if (answerMode === 'title-only') {
+    // Single-answer mode: show the correct answer as the "title" field
+    const correctAnswer = track.src ?? track.t;
+    const extraInfo     = (track.src && track.t && track.src !== track.t) ? ` \u2014 ${track.t}` : '';
+    document.getElementById("reveal-artist").textContent = '';
+    document.getElementById("reveal-title").textContent  = correctAnswer + extraInfo;
+    if (artistRevealRow) artistRevealRow.style.display = 'none';
+    document.getElementById("title-result").textContent = titleOk ? "\u2705" : "\u274c";
+    document.getElementById("title-pts").textContent    = titleOk ? "100 pts" : "0 pts";
+  } else {
+    document.getElementById("reveal-artist").textContent = track.src ?? track.a;
+    document.getElementById("reveal-title").textContent  = track.t;
+    if (artistRevealRow) artistRevealRow.style.display = '';
+    document.getElementById("artist-result").textContent = artistOk ? "\u2705" : "\u274c";
+    document.getElementById("title-result").textContent  = titleOk  ? "\u2705" : "\u274c";
+    document.getElementById("artist-pts").textContent = artistOk ? "50 pts" : "0 pts";
+    document.getElementById("title-pts").textContent  = titleOk  ? "50 pts" : "0 pts";
+    // Sync reveal label to theme type
+    document.querySelector(".score-row:first-child .score-row-label").textContent =
+      state.theme?.artistLabel ?? "Artist";
+  }
   document.getElementById("bonus-pts").textContent  = `+${bonus} pts`;
 
   // Combo row
