@@ -1724,6 +1724,20 @@ function renderLobbyPlayers(players) {
       ${p.isHost ? '<span class="host-badge-sm">Host</span>' : ''}
     </li>
   `).join('');
+
+  // Enable the flip button once there are at least 2 players (host only)
+  if (mp.isHost) {
+    const flipBtn  = document.getElementById('flip-btn');
+    const flipHint = document.getElementById('flip-hint');
+    if (flipBtn) {
+      flipBtn.disabled = players.length < 2;
+    }
+    if (flipHint) {
+      flipHint.textContent = players.length < 2
+        ? 'Waiting for another player to join…'
+        : 'Everyone is here! Start the coin flip.';
+    }
+  }
 }
 
 /* ── Lobby: build theme grid ─────────────────────────────── */
