@@ -1416,6 +1416,7 @@ function hostStartRound() {
     total:      Math.min(ROOM_ROUNDS, hostState.tracks.length),
     previewUrl: tr.previewUrl,
     startedAt:  hostState.roundStartTime,
+    track:      { a: tr.a, t: tr.t, src: tr.src },
   };
   bcast('round-start', payload);
   onRoundStart(payload); // host processes own round-start
@@ -1878,9 +1879,11 @@ function onGameStart({ themeId, themeLabel, themeEmoji, totalRounds }) {
   showPhase('phase-loading');
 }
 
-function onRoundStart({ round, total, previewUrl, startedAt }) {
+function onRoundStart({ round, total, previewUrl, startedAt, track }) {
   mp.round     = round;
   mp.submitted = false;
+  // Populate enrichedTracks for this round so voice matching works for all players
+  if (track) mp.enrichedTracks[round - 1] = track;
   mp.myResult  = null;
   document.getElementById('mp-artist-input').value = '';
   document.getElementById('mp-title-input').value  = '';
