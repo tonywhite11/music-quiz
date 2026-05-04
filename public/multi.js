@@ -1013,7 +1013,10 @@ function startMicAnswer() {
     showMicCenter(false);
     return;
   }
-  stopMicAnswer();
+  // Stop any pre-existing recognition without hiding the mic center (we're already in idle)
+  const prevRec = _recognition;
+  _recognition = null;
+  if (prevRec) { try { prevRec.stop(); } catch (_) {} }
   if (mp.submitted) return;
 
   const rec = new SR();
@@ -1086,13 +1089,36 @@ function stopMicAnswer() {
   showMicCenter(false);
 }
 
+// Stop recognition but keep mic center visible (go back to idle tap-to-talk state)
+function stopMicListening() {
+  const prev = _recognition;
+  _recognition = null;
+  if (prev) { try { prev.stop(); } catch (_) {} }
+  setMpMicState('idle');
+}
+
+// Show the mic in idle (tap-to-talk) state — called at the start of each round
+function showMicIdle() {
+  stopMicListening();
+  const mc      = document.getElementById('mp-mic-center');
+  const num     = document.getElementById('mp-timer-num');
+  const vc      = document.getElementById('mp-voice-chips');
+  const answers = document.getElementById('mp-answer-area');
+  if (mc)      mc.classList.remove('hidden');
+  if (num)     num.style.display = '';
+  if (vc)      vc.classList.remove('hidden');
+  if (answers) answers.style.display = 'none';
+}
+
 /* ── Mic circle state machine (mirrors setAIMicState in game.js) ─────── */
 function setMpMicState(s) {
   const btn   = document.getElementById('mp-mic-center-btn');
   const label = document.getElementById('mp-mic-center-label');
   if (!btn) return;
   btn.classList.remove('listening', 'correct', 'wrong');
-  if (s === 'listening') {
+  if (s === 'idle') {
+    if (label) label.textContent = 'Tap to answer';
+  } else if (s === 'listening') {
     btn.classList.add('listening');
     if (label) label.textContent = 'Listening…';
   } else if (s === 'correct') {
@@ -1903,7 +1929,7 @@ function onRoundStart({ round, total, previewUrl, startedAt, track }) {
   playPreview(previewUrl);
   renderLiveScores(mp.players.map(p => ({ ...p })), new Set());
   showPhase('phase-playing');
-  startMicAnswer();
+  showMicIdle();
 }
 
 function onReplayMusic({ previewUrl, startedAt }) {
@@ -1920,12 +1946,11 @@ function onReplayMusic({ previewUrl, startedAt }) {
   if (replayBanner) { replayBanner.style.display = 'block'; }
   resetVoiceChips();
   configureAnswerMode();
-  stopMicAnswer();
   timerStart(startedAt);
   playPreview(previewUrl);
   // Hide replay banner after 3s
   setTimeout(() => { if (replayBanner) replayBanner.style.display = 'none'; }, 3000);
-  startMicAnswer();
+  showMicIdle();
 }
 
 function onAnswerResult({ forId, artistOk, titleOk, pts }) {
@@ -2139,9 +2164,9 @@ document.getElementById('flip-btn')?.addEventListener('click', () => {
   hostDoFlip();
 });
 
-// Mic button — tap to manually re-start listening if needed
+// Mic button — tap to toggle listening (idle → listening → idle)
 document.getElementById('mp-mic-center-btn')?.addEventListener('click', () => {
-  if (_recognition) { stopMicAnswer(); return; }
+  if (_recognition) { stopMicListening(); return; }
   startMicAnswer();
 });
 
